@@ -547,15 +547,11 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		if (client->GetUploadDatarate() >= 1024 && (client->GetUploadDatarate() / 1024.0) < 50) {		
 			if (client->GetUploadDatarateWarnings() >= 200){ //The client has 200 shipments with warning (< 50kb/s), before removing it from the queue , 200 shipments = 1 minute
 				client->SetUploadDatarateWarnings(0);
-				AddLogLineC(CFormat(_("Upload KICK client: '%s' rate: '%s kb/s' friend slot: '%s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFriendSlot() % client->GetFullIP());
+				AddLogLineC(CFormat(_("Upload KICK client: '%s' rate: '%s kb/s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP());
 				return true;
 			}else{
-				int nrAnyDownload = theApp->downloadqueue->AnyDownloadingFileCount();
-				if(nrAnyDownload == 0) {
-					client->SetUploadDatarateWarnings((client->GetUploadDatarateWarnings()+1));
-					//AddLogLineC(CFormat(_("Upload WARNING (%s) SPEED client: '%s' rate: '%s kb/s' friend slot: '%s' ip: '%s'")) % (client->GetUploadDatarateWarnings()) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFriendSlot() % client->GetFullIP());
-					return false;
-				}
+				client->SetUploadDatarateWarnings((client->GetUploadDatarateWarnings()+1));
+				return false;
 			}
 		}
 	}
