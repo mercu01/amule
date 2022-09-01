@@ -1209,6 +1209,17 @@ uint16 CDownloadQueue::GetDownloadingFileCount() const
 
 	return count;
 }
+uint16 CDownloadQueue::AnyDownloadingFileCount() const
+{
+	for ( uint16 i = 0; i < m_filelist.size(); i++ ) {
+		uint8 status = m_filelist[i]->GetStatus();
+		if ( status == PS_READY || status == PS_EMPTY ) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
 
 
 uint16 CDownloadQueue::GetPausedFileCount() const

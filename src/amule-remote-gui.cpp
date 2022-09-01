@@ -1226,6 +1226,7 @@ CUpDownClient::CUpDownClient(const CEC_UpDownClient_Tag *tag) : CECID(tag->ID())
 	m_nTransferredDown		= 0;
 	m_nTransferredUp		= 0;
 	m_nUpDatarate			= 0;
+	m_nUpDatarateWarnings = 0;
 	m_uploadingfile			= NULL;
 	m_waitingPosition		= 0;
 	m_nUploadState			= 0;

@@ -278,7 +278,7 @@ void* UploadBandwidthThrottler::Entry()
 		// Calculate data rate
 		if (thePrefs::GetMaxUpload() == UNLIMITED) {
 			// Try to increase the upload rate from UploadSpeedSense
-			allowedDataRate = (uint32)theStats::GetUploadRate() + 5 * 1024;
+			allowedDataRate = (uint32)theStats::GetUploadRate() + 100 * 1024;
 		} else {
 			allowedDataRate = thePrefs::GetMaxUpload() * 1024;
 		}
@@ -295,7 +295,7 @@ void* UploadBandwidthThrottler::Entry()
 		if (bytesToSpend < 1) {
 			// We have sent more than allowed in last cycle so we have to wait now
 			// until we can send at least 1 byte.
-			sleepTime = std::max((-bytesToSpend + 1) * 1000 / allowedDataRate + 2, // add 2 ms to allow for rounding inaccuracies
+			sleepTime = std::max((-bytesToSpend + 1) * 1000 / allowedDataRate, // add 2 ms to allow for rounding inaccuracies
 									extraSleepTime);
 		} else {
 			// We could send at once, but sleep a while to not suck up all cpu
@@ -303,6 +303,7 @@ void* UploadBandwidthThrottler::Entry()
 		}
 
 		if (timeSinceLastLoop < sleepTime) {
+			//AddLogLineC(CFormat(_("Sleep: '%s' bytesToSpend: '%s' allowedDataRate: '%s' extraSleepTime: '%s'")) % sleepTime % bytesToSpend % allowedDataRate % extraSleepTime);
 			Sleep(sleepTime-timeSinceLastLoop);
 		}
 
@@ -324,7 +325,7 @@ void* UploadBandwidthThrottler::Entry()
 
 		// Calculate how many bytes we can spend
 
-		bytesToSpend += (sint32) (allowedDataRate / 1000.0 * timeSinceLastLoop);
+		bytesToSpend += (sint32) (allowedDataRate / 500.0 * timeSinceLastLoop);
 
 		if (bytesToSpend >= 1) {
 			sint32 spentBytes = 0;
@@ -432,7 +433,7 @@ void* UploadBandwidthThrottler::Entry()
 			m_SentBytesSinceLastCallOverhead += spentOverhead;
 
 			if (spentBytes == 0) {	// spentBytes includes the overhead
-				extraSleepTime = std::min<uint32>(extraSleepTime * 5, 1000); // 1s at most
+				extraSleepTime = std::min<uint32>(extraSleepTime * 5, 50); //ORIGINAL 1s at most modify max 50ms
 			} else {
 				extraSleepTime = TIME_BETWEEN_UPLOAD_LOOPS;
 			}

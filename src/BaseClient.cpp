@@ -189,6 +189,7 @@ void CUpDownClient::Init()
 	m_nCurQueueSessionPayloadUp = 0;
 	m_addedPayloadQueueSession = 0;
 	m_nUpDatarate = 0;
+	m_nUpDatarateWarnings = 0;
 	m_nSumForAvgUpDataRate = 0;
 
 	m_nRemoteQueueRank = 0;

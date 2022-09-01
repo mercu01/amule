@@ -830,11 +830,6 @@ m_WanService(NULL)
 
 	// Start UPnP
 	int ret;
-	ret = UpnpInit2(0, udpPort);
-	if (ret != UPNP_E_SUCCESS) {
-		msg << "error(UpnpInit2): Error code ";
-		goto error;
-	}
 	port = UpnpGetServerPort();
 	ipAddress = UpnpGetServerIpAddress();
 	msg << "bound to " << ipAddress << ":" <<

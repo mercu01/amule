@@ -296,24 +296,9 @@ void CUploadQueue::Process()
 
 uint16 CUploadQueue::GetMaxSlots() const
 {
-	uint16 nMaxSlots = 0;
-	float kBpsUpPerClient = (float)thePrefs::GetSlotAllocation();
-	if (thePrefs::GetMaxUpload() == UNLIMITED) {
-		float kBpsUp = theStats::GetUploadRate() / 1024.0f;
-		nMaxSlots = (uint16)(kBpsUp / kBpsUpPerClient) + 2;
-	} else {
-		if (thePrefs::GetMaxUpload() >= 10) {
-			nMaxSlots = (uint16)floor((float)thePrefs::GetMaxUpload() / kBpsUpPerClient + 0.5);
-				// floor(x + 0.5) is a way of doing round(x) that works with gcc < 3 ...
-			if (nMaxSlots < MIN_UP_CLIENTS_ALLOWED) {
-				nMaxSlots=MIN_UP_CLIENTS_ALLOWED;
-			}
-		} else {
-			nMaxSlots = MIN_UP_CLIENTS_ALLOWED;
-		}
-	}
-	if (nMaxSlots > MAX_UP_CLIENTS_ALLOWED) {
-		nMaxSlots = MAX_UP_CLIENTS_ALLOWED;
+	uint16 nMaxSlots = thePrefs::GetSlotAllocation();
+	if (nMaxSlots < 5) {
+		nMaxSlots = 5;
 	}
 	return nMaxSlots;
 }
@@ -546,43 +531,60 @@ bool CUploadQueue::RemoveFromUploadQueue(CUpDownClient* client)
 }
 
 
-bool CUploadQueue::CheckForTimeOver(CUpDownClient* client)
+bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 {
-	// Don't kick anybody if there's no need to
-	if (!m_allowKicking) {
-		return false;
-	}
 	// First, check if it is a VIP slot (friend or Release-Prio).
 	if (client->GetFriendSlot()) {
 		return false;	// never drop the friend
 	}
 	// Release-Prio and nobody on queue for it?
 	if (client->GetUploadFile()->GetUpPriority() == PR_POWERSHARE) {
-		// Keep it unless half of the UL slots are occupied with friends or Release uploads.
-		uint16 vips = 0;
-		for (CClientRefList::iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
-			CUpDownClient* cur_client = it->GetClient();
-			if (cur_client->GetFriendSlot() || cur_client->GetUploadFile()->GetUpPriority() == PR_POWERSHARE) {
-				vips++;
+		// INFINITE PR_POWERSHARE CLIENTS
+		return false;
+	}
+	if (m_uploadinglist.size() >= GetMaxSlots()) {//clients in queue
+		//client  < 50 kb/s  except < 1kb's (false client rate?)
+		if (client->GetUploadDatarate() >= 1024 && (client->GetUploadDatarate() / 1024.0) < 50) {		
+			if (client->GetUploadDatarateWarnings() >= 200){ //The client has 200 shipments with warning (< 50kb/s), before removing it from the queue , 200 shipments = 1 minute
+				client->SetUploadDatarateWarnings(0);
+				AddLogLineC(CFormat(_("Upload KICK client: '%s' rate: '%s kb/s' friend slot: '%s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFriendSlot() % client->GetFullIP());
+				return true;
+			}else{
+				int nrAnyDownload = theApp->downloadqueue->AnyDownloadingFileCount();
+				if(nrAnyDownload == 0) {
+					client->SetUploadDatarateWarnings((client->GetUploadDatarateWarnings()+1));
+					//AddLogLineC(CFormat(_("Upload WARNING (%s) SPEED client: '%s' rate: '%s kb/s' friend slot: '%s' ip: '%s'")) % (client->GetUploadDatarateWarnings()) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFriendSlot() % client->GetFullIP());
+					return false;
+				}
 			}
 		}
-		// allow if VIP uploads occupy at most half of the possible upload slots
-		if (vips <= GetMaxSlots() / 2) {
-			return false;
-		}
-		// Otherwise normal rules apply.
+	}
+	return false;
+}
+bool CUploadQueue::CheckForTimeOver(CUpDownClient* client)
+{
+	// First, check if it is a VIP slot (friend or Release-Prio).
+	if (client->GetFriendSlot()) {
+		return false;	// never drop the friend
+	}
+	// Release-Prio and nobody on queue for it?
+	if (client->GetUploadFile()->GetUpPriority() == PR_POWERSHARE) {
+		// INFINITE PR_POWERSHARE CLIENTS
+		return false;
 	}
 
 	// Ordinary slots
-	// "Transfer full chunks": drop client after 10 MB upload, or after an hour.
+	// "Transfer full chunks": drop client after 1 gb upload, or after an hour.
 	// (so average UL speed should at least be 2.84 kB/s)
 	// We don't track what he is downloading, but if it's all from one chunk he gets it.
-	if (client->GetUpStartTimeDelay() > 3600000	// time: 1h
-		|| client->GetSessionUp() > 10485760) {		// data: 10MB
-		m_allowKicking = false;		// kick max one client per cycle
+	if (client->GetSessionUp() > 5242880000) { // Changed to 5GB, Original: 10485760 - data: 10MB
+		AddLogLineC(CFormat(_("Upload KICK REASON: MAX UPLOAD PER SESSION 5GB - '%s' rate: '%s kb/s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP());
 		return true;
 	}
-
+	if (client->GetUpStartTimeDelay() > 10800000) {	//Changed to 3h, Original: 3600000	// time: 1h
+		AddLogLineC(CFormat(_("Upload KICK REASON: MAX TIME PER SESSION 3h - '%s' rate: '%s kb/s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP());
+		return true;
+	}
 	return false;
 }
 

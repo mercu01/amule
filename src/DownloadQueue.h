@@ -255,6 +255,8 @@ public:
 	 * Returns the current number of downloading files.
 	 */
 	uint16	GetDownloadingFileCount() const;
+	
+	uint16	AnyDownloadingFileCount() const;
 
 	/**
 	 * Returns the current number of paused files.

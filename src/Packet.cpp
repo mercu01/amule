@@ -244,14 +244,18 @@ uint8_t* CPacket::GetUDPHeader() {
 }
 
 
-void CPacket::PackPacket()
+void CPacket::PackPacket(bool compression)
 {
 	wxASSERT(!m_bSplitted);
 
 	uLongf newsize = size + 300;
 	uint8_t* output = new uint8_t[newsize];
 
-	uint16 result = compress2(output, &newsize, pBuffer, size, Z_BEST_COMPRESSION);
+	uint32 levelcompression = 0;//without compression
+	if(compression) {
+		levelcompression = 1; //min compression, best speed
+	}
+	uint16 result = compress2(output, &newsize, pBuffer, size, levelcompression);
 
 	if (result != Z_OK || size <= newsize) {
 		delete[] output;

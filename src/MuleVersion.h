@@ -66,7 +66,7 @@ inline wxString GetMuleVersion()
 {
 	MULEVERSION_RETVAL_BEGIN
 		wxT(VERSION)
-		wxT(" compiled with ")
+		wxT(" broadband branch, compiled with ")
 
 // Figure out the toolkit used by wxWidgets...
 #if defined(__WXGTK__)

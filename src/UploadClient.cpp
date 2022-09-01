@@ -287,8 +287,8 @@ void CUpDownClient::CreateStandardPackets(const uint8_t* buffer, uint32 togo, Re
 	uint32 nPacketSize;
 
 	CMemFile memfile(buffer, togo);
-	if (togo > 10240) {
-		nPacketSize = togo/(uint32)(togo/10240);
+	if (togo > 102400) {//packet size to 102400 from 10240
+		nPacketSize = togo/(uint32)(togo/102400);//packet size to 102400 from 10240
 	} else {
 		nPacketSize = togo;
 	}
@@ -334,7 +334,7 @@ void CUpDownClient::CreatePackedPackets(const uint8_t* buffer, uint32 togo, Requ
 {
 	uLongf newsize = togo+300;
 	CScopedArray<uint8_t> output(newsize);
-	uint16 result = compress2(output.get(), &newsize, buffer, togo, 9);
+	uint16 result = compress2(output.get(), &newsize, buffer, togo, 0);
 	if (result != Z_OK || togo <= newsize){
 		CreateStandardPackets(buffer, togo, currentblock);
 		return;
@@ -346,8 +346,8 @@ void CUpDownClient::CreatePackedPackets(const uint8_t* buffer, uint32 togo, Requ
 	uint32 oldSize = togo;
 	togo = newsize;
 	uint32 nPacketSize;
-	if (togo > 10240) {
-		nPacketSize = togo/(uint32)(togo/10240);
+	if (togo > 102400) {//packet size to 102400 from 10240
+		nPacketSize = togo/(uint32)(togo/102400);//packet size to 102400 from 10240
 	} else {
 		nPacketSize = togo;
 	}
@@ -595,13 +595,17 @@ uint32 CUpDownClient::SendBlockData()
         sentBytesPayload = s->GetSentPayloadSinceLastCallAndReset();
         m_nCurQueueSessionPayloadUp += sentBytesPayload;
 
-        if (theApp->uploadqueue->CheckForTimeOver(this)) {
-            theApp->uploadqueue->RemoveFromUploadQueue(this);
-			SendOutOfPartReqsAndAddToWaitingQueue();
-        } else {
-            // read blocks from file and put on socket
-            CreateNextBlockPackage();
-        }
+		if (theApp->uploadqueue->CheckForTimeOverLowClients(this)) {
+			theApp->uploadqueue->RemoveFromUploadQueue(this);
+		} else {
+			if (theApp->uploadqueue->CheckForTimeOver(this)) {
+				theApp->uploadqueue->RemoveFromUploadQueue(this);
+				SendOutOfPartReqsAndAddToWaitingQueue();
+			} else {
+				// read blocks from file and put on socket
+				CreateNextBlockPackage();
+			}
+		}
     }
 
     if(sentBytesCompleteFile + sentBytesPartFile > 0 ||

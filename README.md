@@ -1,3 +1,51 @@
+# aMule - broadband branch
+The initial purpose of this project was to provide an aMule repository (including dependencies) that is ready to build and update the dependent libraries when possible. This branch specifically focuses on providing a build that is better suited to address nowadays file sizes and broadband availability. Default hard-coded parameters of aMule were better suited for small-files/slow-connections, leading to very low per-client transfer rates by nowadays standards.  
+The focus here is to maximise throughput for broadband users, to optimize seeding.  
+The focus is as well to introduce the least amount of changes to preserve the original quality and stability of the client.  
+
+## Dockerhub
+### mercu/builder-amule:arm64
+
+tags: 
+- arm64
+- amd64
+
+https://hub.docker.com/r/mercu/builder-amule
+
+## Building
+Docker for build:
+	https://github.com/mercu01/docker-amule-broadband
+	
+## Issue:
+The upload slot algorithm is broken. Amule generates infinite upload slots, each slot of a few kb/s.
+	
+## Summary of changes
+ - Fix Slot Allocation = upload slots (min 5 slots, recomended: 10/20)
+ - The client upload has 200 shipments with warning (< 50kb/s), before removing it from the queue, 200 shipments = 1 minute
+ - Infinite POWERSHARE Clients
+ - Zip compression disabled (Reduce CPU usage)
+ - Change size upload package: from 10 kilobytes to 1 megabyte (Reduce number loops to upload)
+
+## Example
+### I have 15mb/s upload connection:
+ - Configure 15 slots allocation
+ - Max upload 10000
+ 
+![image](https://user-images.githubusercontent.com/9451876/187071726-5dc9ee0c-807e-4659-81c5-1087fd344685.png)
+
+### Results:
+
+![image](https://user-images.githubusercontent.com/9451876/187071920-33663bb0-93fe-48cb-94b6-ef0b0616389f.png)
+
+### Statistics:
+
+![image](https://user-images.githubusercontent.com/9451876/187071859-3afc0544-f550-4fd5-9de2-b1b88fccc1be.png)
+
+## Inspired by
+- [itlezy/eMule](https://github.com/itlezy/eMule )
+
+---
+
 aMule
 =====
 

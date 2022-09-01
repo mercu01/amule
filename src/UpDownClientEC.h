@@ -109,6 +109,8 @@ public:
 	uint64				GetTransferredDown() const				{ return m_nTransferredDown; }
 	uint64				GetTransferredUp() const				{ return m_nTransferredUp; }
 	uint32				GetUploadDatarate() const				{ return m_nUpDatarate; }
+	uint32				GetUploadDatarateWarnings() const		{ return m_nUpDatarateWarnings; }
+	void				SetUploadDatarateWarnings(uint32 val)	{ m_nUpDatarateWarnings = val; }
 	uint64				GetUploadedTotal() const;
 	const CKnownFile*	GetUploadFile() const					{ return m_uploadingfile; }
 	uint16				GetUploadQueueWaitingPosition() const	{ return m_waitingPosition; }
@@ -166,6 +168,7 @@ private:
 	uint64		m_nTransferredDown;
 	uint64		m_nTransferredUp;
 	uint32		m_nUpDatarate;
+	uint32		m_nUpDatarateWarnings;
 	CKnownFile*	m_uploadingfile;
 	uint16		m_waitingPosition;
 	uint8		m_nUploadState;

@@ -56,7 +56,7 @@ public:
 	static uint32		GetPacketSizeFromHeader(const uint8_t* rawHeader);
 	bool			IsSplitted()		{ return m_bSplitted; }
 	bool			IsLastSplitted()	{ return m_bLastSplitted; }
-	void			PackPacket();
+	void			PackPacket(bool compression = true);
 	bool			UnPackPacket(uint32 uMaxDecompressedSize = 50000);
 	// -khaos--+++> Returns either -1, 0 or 1.  -1 is unset, 0 is from complete file, 1 is from part file
 	bool			IsFromPF()		{ return m_bFromPF; }
