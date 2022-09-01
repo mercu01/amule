@@ -28,18 +28,23 @@ The upload slot algorithm is broken. Amule generates infinite upload slots, each
 
 ## Example
 ### I have 15mb/s upload connection:
- - Configure 15 slots allocation
- - Max upload 10000
+ - Configure 20 slots allocation, (1 slot = 500 Kb's, 20 slots = 10 Mb's approximate)
+ - Max upload 0
+ - Max download 0
  
-![image](https://user-images.githubusercontent.com/9451876/187071726-5dc9ee0c-807e-4659-81c5-1087fd344685.png)
+![config](https://user-images.githubusercontent.com/9451876/187890550-f733421e-495b-458f-8221-f54bd9cb6167.jpg)
 
-### Results:
+### Results, only uploading:
 
-![image](https://user-images.githubusercontent.com/9451876/187071920-33663bb0-93fe-48cb-94b6-ef0b0616389f.png)
+![uploading only](https://user-images.githubusercontent.com/9451876/187890695-4c40d231-ea29-4d19-bea5-0aeacd60b44d.jpg)
 
-### Statistics:
+### Statistics, only uploading:
 
 ![image](https://user-images.githubusercontent.com/9451876/187071859-3afc0544-f550-4fd5-9de2-b1b88fccc1be.png)
+
+### Results, uploading and downloading:
+
+![uploading and downloading](https://user-images.githubusercontent.com/9451876/187890831-9469d829-04cb-406c-bdff-c4a938973a5c.jpg)
 
 ## Inspired by
 - [itlezy/eMule](https://github.com/itlezy/eMule )
