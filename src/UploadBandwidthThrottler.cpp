@@ -263,6 +263,7 @@ void UploadBandwidthThrottler::EndThread()
  */
 void* UploadBandwidthThrottler::Entry()
 {
+	//debug
 	const uint32 TIME_BETWEEN_UPLOAD_LOOPS = 1;
 
 	uint32 lastLoopTick = GetTickCountFullRes();
@@ -274,11 +275,12 @@ void* UploadBandwidthThrottler::Entry()
 
 	while (m_doRun && !TestDestroy()) {
 		uint32 timeSinceLastLoop = GetTickCountFullRes() - lastLoopTick;
+		uint32 slots = m_StandardOrder_list.size();
 
 		// Calculate data rate
 		if (thePrefs::GetMaxUpload() == UNLIMITED) {
-			// Try to increase the upload rate from UploadSpeedSense
-			allowedDataRate = (uint32)theStats::GetUploadRate() + 100 * 1024;
+			// 1Slot = 1mb's
+			allowedDataRate = (slots + 1) * 1000000;
 		} else {
 			allowedDataRate = thePrefs::GetMaxUpload() * 1024;
 		}
@@ -295,7 +297,7 @@ void* UploadBandwidthThrottler::Entry()
 		if (bytesToSpend < 1) {
 			// We have sent more than allowed in last cycle so we have to wait now
 			// until we can send at least 1 byte.
-			sleepTime = std::max((-bytesToSpend + 1) * 1000 / allowedDataRate, // add 2 ms to allow for rounding inaccuracies
+			sleepTime = std::max((-bytesToSpend + 1) * 1024 / allowedDataRate + 2, // add 2 ms to allow for rounding inaccuracies
 									extraSleepTime);
 		} else {
 			// We could send at once, but sleep a while to not suck up all cpu
@@ -303,7 +305,6 @@ void* UploadBandwidthThrottler::Entry()
 		}
 
 		if (timeSinceLastLoop < sleepTime) {
-			//AddLogLineC(CFormat(_("Sleep: '%s' bytesToSpend: '%s' allowedDataRate: '%s' extraSleepTime: '%s'")) % sleepTime % bytesToSpend % allowedDataRate % extraSleepTime);
 			Sleep(sleepTime-timeSinceLastLoop);
 		}
 
@@ -325,7 +326,7 @@ void* UploadBandwidthThrottler::Entry()
 
 		// Calculate how many bytes we can spend
 
-		bytesToSpend += (sint32) (allowedDataRate / 500.0 * timeSinceLastLoop);
+		bytesToSpend += (sint32) (allowedDataRate / 1000.0 * timeSinceLastLoop);
 
 		if (bytesToSpend >= 1) {
 			sint32 spentBytes = 0;
@@ -369,7 +370,6 @@ void* UploadBandwidthThrottler::Entry()
 			}
 
 			// Check if any sockets haven't gotten data for a long time. Then trickle them a package.
-			uint32 slots = m_StandardOrder_list.size();
 			for (uint32 slotCounter = 0; slotCounter < slots; slotCounter++) {
 				ThrottledFileSocket* socket = m_StandardOrder_list[ slotCounter ];
 
@@ -415,7 +415,8 @@ void* UploadBandwidthThrottler::Entry()
 
 				rememberedSlotCounter++;
 			}
-
+			
+			
 			// Do some limiting of what we keep for the next loop.
 			bytesToSpend -= spentBytes;
 			sint32 minBytesToSpend = (slots + 1) * minFragSize;
@@ -423,12 +424,13 @@ void* UploadBandwidthThrottler::Entry()
 			if (bytesToSpend < - minBytesToSpend) {
 				bytesToSpend = - minBytesToSpend;
 			} else {
-				sint32 bandwidthSavedTolerance = slots * 512 + 1;
+				sint32 bandwidthSavedTolerance = slots * (allowedDataRate/1024) + 1; //Now calculate tolerance by allowedDataRate
 				if (bytesToSpend > bandwidthSavedTolerance) {
 					bytesToSpend = bandwidthSavedTolerance;
+					
 				}
 			}
-
+			
 			m_SentBytesSinceLastCall += spentBytes;
 			m_SentBytesSinceLastCallOverhead += spentOverhead;
 

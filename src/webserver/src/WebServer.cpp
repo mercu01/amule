@@ -1384,11 +1384,11 @@ CDynStatisticImage::CDynStatisticImage(int height, bool scale1024, CStatsData *d
 	m_name = CFormat(wxT("dyn_%p_stat.png")) % data;
 
 	m_num_font_w_size = 8;
-	m_num_font_h_size = 16;
+	m_num_font_h_size = 12;
 
-	// leave enough space for 4 digit number
-	int img_delta = m_num_font_w_size / 4;
-	m_left_margin = 4*(m_num_font_w_size + img_delta) + img_delta;
+	// leave enough space for 5 digit number
+	int img_delta = m_num_font_w_size / 5;
+	m_left_margin = 5*(m_num_font_w_size + img_delta) + img_delta;
 	// leave enough space for number height
 	m_bottom_margin = m_num_font_h_size;
 
@@ -1489,7 +1489,7 @@ void CDynStatisticImage::DrawImage()
 	//
 	// draw axis scale
 	//
-	int img_delta = m_num_font_w_size / 4;
+	int img_delta = m_num_font_w_size / 5;
 	// Number "0" is always there
 	m_digits[0]->Apply(m_row_ptrs, 3*img_delta+2*m_num_font_w_size, m_y_axis_size-m_num_font_h_size-5);
 
@@ -1502,22 +1502,27 @@ void CDynStatisticImage::DrawImage()
 		y_axis_max /= m_scale_up;
 	}
 
-	// X---
-	if ( y_axis_max > 999 ) {
-		m_digits[y_axis_max / 1000]->Apply(m_row_ptrs, img_delta, img_delta);
+	// X----
+	if ( y_axis_max > 9999 ) {
+		m_digits[y_axis_max / 10000]->Apply(m_row_ptrs, img_delta, img_delta);
 	}
-	// -X--
-	if ( y_axis_max > 99 ) {
-		m_digits[(y_axis_max % 1000) / 100]->Apply(m_row_ptrs,
+	// -X---
+	if ( y_axis_max > 999 ) {
+		m_digits[y_axis_max / 1000]->Apply(m_row_ptrs,
 			2*img_delta+m_num_font_w_size, img_delta);
 	}
-	// --X-
-	if ( y_axis_max > 9 ) {
-		m_digits[(y_axis_max % 100) / 10]->Apply(m_row_ptrs,
+	// --X--
+	if ( y_axis_max > 99 ) {
+		m_digits[(y_axis_max % 1000) / 100]->Apply(m_row_ptrs,
 			3*img_delta+2*m_num_font_w_size, img_delta);
 	}
-	// ---X
-	m_digits[y_axis_max % 10]->Apply(m_row_ptrs, 4*img_delta+3*m_num_font_w_size, img_delta);
+	// ---X-
+	if ( y_axis_max > 9 ) {
+		m_digits[(y_axis_max % 100) / 10]->Apply(m_row_ptrs,
+			4*img_delta+3*m_num_font_w_size, img_delta);
+	}
+	// ----X
+	m_digits[y_axis_max % 10]->Apply(m_row_ptrs, 5*img_delta+4*m_num_font_w_size, img_delta);
 
 	int prev_data = m_data->GetFirst();
 	if ( m_scale_down != 1 ) {
