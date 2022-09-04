@@ -20,11 +20,18 @@ Docker for build:
 The upload slot algorithm is broken. Amule generates infinite upload slots, each slot of a few kb/s.
 	
 ## Summary of changes
+### 2.3.3_broadband_RC2
+ - Fix Kad stats graph, now work.
+ - Fix Repair Upload stats graph bug. Change limit graph 9,9mb/s to 100mb/s.
+ - Fix Default upload rate = 0 for broadband branch, 1 slot = 1 mb/s upload rate
+### 2.3.3_broadband_RC1
  - Fix Slot Allocation = upload slots (min 5 slots, recomended: 10/20)
  - The client upload has 200 shipments with warning (< 50kb/s), before removing it from the queue, 200 shipments = 1 minute
  - Infinite POWERSHARE Clients
  - Zip compression disabled (Reduce CPU usage)
- - Change size upload package: from 10 kilobytes to 1 megabyte (Reduce number loops to upload)
+ - Change size upload package: from 10 kilobytes to 100 kilobytes (Reduce number loops to upload)
+
+
 
 ## Example
 ### I have 15mb/s upload connection:
