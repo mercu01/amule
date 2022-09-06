@@ -21,8 +21,6 @@ The upload slot algorithm is broken. Amule generates infinite upload slots, each
 	
 ## Summary of changes
 ### 2.3.3_broadband_RC2
- - Fix Kad stats graph, now work.
- - Fix Repair Upload stats graph bug. Change limit graph 9,9mb/s to 100mb/s.
  - Fix Default upload rate = 0 for broadband branch, 1 slot = 1 mb/s upload rate
 ### 2.3.3_broadband_RC1
  - Fix Slot Allocation = upload slots (min 5 slots, recomended: 10/20)
