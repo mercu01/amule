@@ -272,15 +272,13 @@ void* UploadBandwidthThrottler::Entry()
 	uint32 allowedDataRate;
 	uint32 rememberedSlotCounter = 0;
 	uint32 extraSleepTime = TIME_BETWEEN_UPLOAD_LOOPS;
-
+	uint32 slotsAllowed = 0;
 	while (m_doRun && !TestDestroy()) {
 		uint32 timeSinceLastLoop = GetTickCountFullRes() - lastLoopTick;
-		uint32 slots = m_StandardOrder_list.size();
-
 		// Calculate data rate
 		if (thePrefs::GetMaxUpload() == UNLIMITED) {
 			// 1Slot = 1mb's
-			allowedDataRate = (slots + 1) * 1000000;
+			allowedDataRate = (slotsAllowed + 1) * 1000000;
 		} else {
 			allowedDataRate = thePrefs::GetMaxUpload() * 1024;
 		}
@@ -368,8 +366,9 @@ void* UploadBandwidthThrottler::Entry()
 					spentOverhead += socketSentBytes.sentBytesControlPackets;
 				}
 			}
-
 			// Check if any sockets haven't gotten data for a long time. Then trickle them a package.
+			uint32 slots = m_StandardOrder_list.size();
+			slotsAllowed = slots;
 			for (uint32 slotCounter = 0; slotCounter < slots; slotCounter++) {
 				ThrottledFileSocket* socket = m_StandardOrder_list[ slotCounter ];
 
