@@ -121,11 +121,11 @@ label {
 	word-break: break-all;
 	word-wrap: break-word;
 }
-.texte-short-name{
+.texte-full-name{
 	max-width: 0;
 	width: 45%;
 }
-.texte-short-name-upload{
+.texte-full-name-upload{
 	width: 55%;
 }
 label {
@@ -406,7 +406,7 @@ function formCommandSubmit(command)
 	
 				echo "<td class='texte' height='22'>", '<input type="checkbox" name="', $file->hash, '" >', "</td>";
 	
-				echo "<td class='texte texte-short-name' height='22'>", $file->short_name, "</td>";
+				echo "<td class='texte texte-full-name' height='22'>", $file->name, "</td>";
 				
 				echo "<td class='texte' height='22' align='center'>", CastToXBytes($file->size), "</td>";
 
@@ -490,7 +490,7 @@ function formCommandSubmit(command)
 	
 				echo "<td class='texte' height='22' align='center'>", "</td>";
 				
-				echo "<td class='texte texte-short-name texte-short-name-upload' height='22'>", $file->short_name, "</td>";
+				echo "<td class='texte texte-full-name texte-full-name-upload' height='22'>", $file->name, "</td>";
 
 				echo "<td class='texte' height='22' align='center'>", $file->user_name, "</td>";
 	
