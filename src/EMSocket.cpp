@@ -671,7 +671,7 @@ uint32 CEMSocket::GetNeededBytes()
 
 		sendgap = ::GetTickCount() - lastCalledSend;
 
-		timetotal = m_bAccelerateUpload?22000:45000;
+		timetotal = m_bAccelerateUpload?45000:90000;
 		timeleft = ::GetTickCount() - lastFinishedStandard;
 		if (sendbuffer && !m_currentPacket_is_controlpacket) {
 			sizeleft = sendblen-sent;
