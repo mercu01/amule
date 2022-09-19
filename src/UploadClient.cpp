@@ -287,8 +287,8 @@ void CUpDownClient::CreateStandardPackets(const uint8_t* buffer, uint32 togo, Re
 	uint32 nPacketSize;
 
 	CMemFile memfile(buffer, togo);
-	if (togo > 152400) {//packet size to 102400 from 10240
-		nPacketSize = togo/(uint32)(togo/152400);//packet size to 152400 from 10240
+	if (togo > 252400) {//packet size to 102400 from 10240
+		nPacketSize = togo/(uint32)(togo/252400);//packet size to 252400 from 10240
 	} else {
 		nPacketSize = togo;
 	}
@@ -346,8 +346,8 @@ void CUpDownClient::CreatePackedPackets(const uint8_t* buffer, uint32 togo, Requ
 	uint32 oldSize = togo;
 	togo = newsize;
 	uint32 nPacketSize;
-	if (togo > 152400) {//packet size to 102400 from 10240
-		nPacketSize = togo/(uint32)(togo/152400);//packet size to 102400 from 10240
+	if (togo > 252400) {//packet size to 102400 from 10240
+		nPacketSize = togo/(uint32)(togo/252400);//packet size to 102400 from 10240
 	} else {
 		nPacketSize = togo;
 	}
