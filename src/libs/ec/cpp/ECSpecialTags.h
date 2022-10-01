@@ -302,7 +302,7 @@ class CEC_UpDownClient_Tag : public CECTag {
 
 		wxString ClientName(wxString *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_NAME, target); }
 		uint32 SpeedUp(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UP_SPEED, target); }
-		wxString ClientName(wxString *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UP_SPEED_WARNINGS, target); }
+		wxString SpeedUpWarnings(wxString *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UP_SPEED_WARNINGS, target); }
 
 		float SpeedDown(float *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_DOWN_SPEED, target); }
 
