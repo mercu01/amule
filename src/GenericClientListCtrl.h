@@ -48,6 +48,7 @@ enum GenericColumnEnum {
 	ColumnUserUploaded,
 	ColumnUserSpeedDown,
 	ColumnUserSpeedUp,
+	ColumnUserSpeedUpWarnings,
 	ColumnUserProgress,
 	ColumnUserAvailable,
 	ColumnUserVersion,

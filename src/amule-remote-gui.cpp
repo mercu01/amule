@@ -1399,6 +1399,7 @@ void CUpDownClientListRem::ProcessItemUpdate(
 	}
 
 	tag->SpeedUp(&client->m_nUpDatarate);
+	tag->SpeedUpWarnings(&client->m_nUpDatarateWarnings);
 	if ( client->m_nDownloadState == DS_DOWNLOADING ) {
 		tag->SpeedDown(&client->m_kBpsDown);
 	} else {

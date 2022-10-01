@@ -157,6 +157,9 @@ wxString CGenericClientListCtrl::TranslateCIDToName(GenericColumnEnum cid)
 		case ColumnUserSpeedUp:
 			name = wxT("s");
 			break;
+		case ColumnUserSpeedUpWarnings:
+			name = wxT("s");
+			break;
 		case ColumnUserProgress:
 			name = wxT("P");
 			break;
@@ -895,6 +898,13 @@ void CGenericClientListCtrl::DrawClientItem(wxDC* dc, int nColumn, const wxRect&
 				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
 			}
 			break;
+		case ColumnUserSpeedUpWarnings:
+			if (item->GetType() != A4AF_SOURCE && client.GetUploadDatarateWarnings()) {
+				buffer =  CFormat(_("%")) % (client.GetUploadDatarateWarnings());
+				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
+			}
+			break;
+			break;
 		case ColumnUserProgress:
 			if ( thePrefs::ShowProgBar() ) {
 				int iWidth = rect.GetWidth() - 2;
@@ -1152,6 +1162,9 @@ int CGenericClientListCtrl::Compare(
 		// Sort by speed
 		case ColumnUserSpeedUp:
 			return CmpAny( client1.GetUploadDatarate(), client2.GetUploadDatarate() );
+
+		case ColumnUserSpeedUpWarnings:
+			return CmpAny( client1.GetUploadDatarateWarnings(), client2.GetUploadDatarateWarnings() );
 
 		// Sort by parts offered
 		case ColumnUserProgress:

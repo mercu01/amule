@@ -30,6 +30,7 @@ static CGenericClientListCtrlColumn s_sources_column_info[] = {
 	{ ColumnUserSpeedDown,		wxTRANSLATE("Download Speed"),	65 },
 	{ ColumnUserUploaded,		wxTRANSLATE("Uploaded"),	65 },
 	{ ColumnUserSpeedUp,		wxTRANSLATE("Upload Speed"),	65 },
+	{ ColumnUserSpeedUpWarnings,wxTRANSLATE("Upload Warnings"),	65 },
 	{ ColumnUserAvailable,		wxTRANSLATE("Available Parts"),	170 },
 	{ ColumnUserVersion,		wxTRANSLATE("Version"),		50 },
 	{ ColumnUserQueueRankLocal,	wxTRANSLATE("Upload Status"),	70 },

@@ -829,6 +829,7 @@ UploadFile::UploadFile(CEC_UpDownClient_Tag *tag) : CECID(tag->ID())
 {
 	sUserName = _SpecialChars(tag->ClientName());
 	nSpeed = tag->SpeedUp();
+	nWarnings = tag->SpeedUpWarnings();
 	nTransferredUp = tag->XferUp();
 	nTransferredDown = tag->XferDown();
 	nUploadFile = 0;

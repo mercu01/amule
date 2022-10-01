@@ -280,6 +280,7 @@ CEC_UpDownClient_Tag::CEC_UpDownClient_Tag(const CUpDownClient* client, EC_DETAI
 
 	// Transfers to Client
 	AddTag(CECTag(EC_TAG_CLIENT_UP_SPEED, client->GetUploadDatarate()), valuemap);
+	AddTag(CECTag(EC_TAG_CLIENT_UP_SPEED_WARNINGS, client->GetUploadDatarateWarnings()), valuemap);
 	if (client->GetDownloadState() == DS_DOWNLOADING || valuemap) {
 		AddTag(CECTag(EC_TAG_CLIENT_DOWN_SPEED, (double)(client->GetKBpsDown())), valuemap);
 	}

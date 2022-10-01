@@ -573,8 +573,8 @@ bool CUploadQueue::CheckForTimeOver(CUpDownClient* client)
 	// "Transfer full chunks": drop client after 1 gb upload, or after an hour.
 	// (so average UL speed should at least be 2.84 kB/s)
 	// We don't track what he is downloading, but if it's all from one chunk he gets it.
-	if (client->GetSessionUp() > 5242880000) { // Changed to 5GB, Original: 10485760 - data: 10MB
-		AddLogLineC(CFormat(_("Upload KICK REASON: MAX UPLOAD PER SESSION 5GB - '%s' rate: '%s kb/s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP());
+	if (client->GetSessionUp() > 10242880000) { // Changed to 10GB, Original: 10485760 - data: 10MB
+		AddLogLineC(CFormat(_("Upload KICK REASON: MAX UPLOAD PER SESSION 10GB - '%s' rate: '%s kb/s' ip: '%s' file name: '%s' file size: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP() % client->GetUploadFile()->GetFileName() % client->GetUploadFile()->GetFileSize());
 		return true;
 	}
 	if (client->GetUpStartTimeDelay() > 10800000) {	//Changed to 3h, Original: 3600000	// time: 1h
