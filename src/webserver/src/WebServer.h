@@ -152,6 +152,7 @@ class UploadFile : public CECID {
 	public:
 		wxString  sUserName;
 		uint32 nTransferredUp;
+		uint32 nUpDatarateWarnings;
 		uint32 nTransferredDown;
 		uint32 nSpeed;
 		uint32 nUploadFile;		// ECID of shared file uploading to client
