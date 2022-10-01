@@ -252,9 +252,9 @@ enum ECTagNames {
 		EC_TAG_CLIENT_DOWNLOAD_TOTAL              = 0x060B,
 		EC_TAG_CLIENT_DOWNLOAD_STATE              = 0x060C,
 		EC_TAG_CLIENT_UP_SPEED                    = 0x060D,
+		EC_TAG_CLIENT_UP_SPEED_WARNINGS           = 0x060G,
 		EC_TAG_CLIENT_DOWN_SPEED                  = 0x060E,
 		EC_TAG_CLIENT_FROM                        = 0x060F,
-		EC_TAG_CLIENT_UP_SPEED_WARNINGS           = 0x060G,
 		EC_TAG_CLIENT_USER_IP                     = 0x0610,
 		EC_TAG_CLIENT_USER_PORT                   = 0x0611,
 		EC_TAG_CLIENT_SERVER_IP                   = 0x0612,
@@ -691,9 +691,9 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x060B: return wxT("EC_TAG_CLIENT_DOWNLOAD_TOTAL");
 		case 0x060C: return wxT("EC_TAG_CLIENT_DOWNLOAD_STATE");
 		case 0x060D: return wxT("EC_TAG_CLIENT_UP_SPEED");
+		case 0x060G: return wxT("EC_TAG_CLIENT_UP_SPEED_WARNINGS");
 		case 0x060E: return wxT("EC_TAG_CLIENT_DOWN_SPEED");
 		case 0x060F: return wxT("EC_TAG_CLIENT_FROM");
-		case 0x060G: return wxT("EC_TAG_CLIENT_UP_SPEED_WARNINGS");
 		case 0x0610: return wxT("EC_TAG_CLIENT_USER_IP");
 		case 0x0611: return wxT("EC_TAG_CLIENT_USER_PORT");
 		case 0x0612: return wxT("EC_TAG_CLIENT_SERVER_IP");

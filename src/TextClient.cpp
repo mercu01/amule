@@ -790,7 +790,7 @@ void CamulecmdApp::Process_Answer_v2(const CECPacket *response)
 						partfileName->GetStringData() << wxT(" ") <<
 						CastItoXBytes(partfileSizeXfer->GetInt()) << wxT(" ") <<
 						CastItoSpeed(partfileSpeed->GetInt()) << wxT(" ") <<
-						CFormat(wxT("%")) % partfileSpeedWarning->GetInt();
+						CFormat(wxT("%u")) % partfileSpeedWarning->GetInt();
 				}
 			}
 			break;
