@@ -56,8 +56,11 @@ void CUpDownClient::SetUploadState(uint8 eNewState)
 		if (m_nUploadState == US_UPLOADING) {
 			// Reset upload data rate computation
 			m_nUpDatarate = 0;
+			m_nUpDatarateStable = 0;
 			m_nSumForAvgUpDataRate = 0;
+			m_nSumForAvgUpDataRate_stable = 0;
 			m_AvarageUDR_list.clear();
+			m_AvarageUDR_list_stable.clear();
 		}
 		if (eNewState == US_UPLOADING) {
 			m_fSentOutOfPartReqs = 0;
@@ -631,6 +634,33 @@ uint32 CUpDownClient::SendBlockData()
     } else {
         // not enough values to calculate trustworthy speed. Use -1 to tell this
         m_nUpDatarate = 0; //-1;
+    }
+	
+	// --- MOD BROADBRANCH
+	// Average stable (60 sec) for kick slow clients
+	 if(sentBytesCompleteFile + sentBytesPartFile > 0 ||
+        m_AvarageUDR_list_stable.empty() || (curTick - m_AvarageUDR_list_stable.back().timestamp) > 1*1000) {
+        // Store how much data we've transferred this round,
+        // to be able to calculate average speed later
+        // keep sum of all values in list up to date
+        TransferredData newitem = {(uint32) (sentBytesCompleteFile + sentBytesPartFile), curTick};
+        m_AvarageUDR_list_stable.push_back(newitem);
+        m_nSumForAvgUpDataRate_stable += sentBytesCompleteFile + sentBytesPartFile;
+    }
+
+    // remove to old values in list 60sec
+    while ((!m_AvarageUDR_list_stable.empty()) && (curTick - m_AvarageUDR_list_stable.front().timestamp) > 60*1000) {
+        // keep sum of all values in list up to date
+        m_nSumForAvgUpDataRate_stable -= m_AvarageUDR_list_stable.front().datalen;
+		m_AvarageUDR_list_stable.pop_front();
+    }
+
+    // Calculate average speed for this slot
+    if ((!m_AvarageUDR_list_stable.empty()) && (curTick - m_AvarageUDR_list_stable.front().timestamp) > 0 && GetUpStartTimeDelay() > 60*1000) {
+        m_nUpDatarateStable = ((uint64)m_nSumForAvgUpDataRate_stable*1000) / (curTick-m_AvarageUDR_list_stable.front().timestamp);
+    } else {
+        // not enough values to calculate trustworthy speed. Use -1 to tell this
+        m_nUpDatarateStable = 0; //-1;
     }
 
     // Check if it's time to update the display.

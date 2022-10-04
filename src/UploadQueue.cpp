@@ -542,6 +542,30 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		// INFINITE PR_POWERSHARE CLIENTS
 		return false;
 	}
+	
+	//--- CALCULATE CLIENT QUALITY ---
+	//--- MAX/MIN UPLOAD DATA RATE CLIENT ---
+	uint32 maxUploadDataRateClient = 0;
+	uint32 minUploadDataRateClient = 0;
+	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
+		uint32 uploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+		if (uploadDataRateClient > 0) {
+			if (uploadDataRateClient > maxUploadDataRateClient) {
+				maxUploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+			}
+			if (uploadDataRateClient < minUploadDataRateClient) {
+				minUploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+			}
+		}
+	}
+	
+	//-- CALCULATE PERCENTAGE QUALITY
+	uint32 currentUploadDataRateClient = (client->GetUploadDatarate() / 1024.0);
+	if (currentUploadDataRateClient > 0) {
+		uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
+		client->SetUploadDatarateQuality(percentCurrentClient);
+	}
+	//--- MAX UPLOAD DATA RATE CLIENT ---
 	if (m_uploadinglist.size() >= GetMaxSlots()) {//clients in queue
 		//client  < 50 kb/s  except < 1kb's (false client rate?)
 		if (client->GetUploadDatarate() >= 1024 && (client->GetUploadDatarate() / 1024.0) < 50) {		

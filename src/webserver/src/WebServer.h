@@ -155,6 +155,8 @@ class UploadFile : public CECID {
 		uint32 nUpDatarateWarnings;
 		uint32 nTransferredDown;
 		uint32 nSpeed;
+		uint32 nSpeedStable;
+		uint32 nQuality;
 		uint32 nUploadFile;		// ECID of shared file uploading to client
 
 		UploadFile(CEC_UpDownClient_Tag *tag);
