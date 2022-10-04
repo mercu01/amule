@@ -548,13 +548,13 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	uint32 maxUploadDataRateClient = 0;
 	uint32 minUploadDataRateClient = 0;
 	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
-		uint32 uploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+		uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
 		if (uploadDataRateClient > 0) {
 			if (uploadDataRateClient > maxUploadDataRateClient) {
-				maxUploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+				maxUploadDataRateClient = uploadDataRateClient;
 			}
 			if (uploadDataRateClient < minUploadDataRateClient) {
-				minUploadDataRateClient = (it->GetClient().GetUploadDatarateStable() / 1024.0);
+				minUploadDataRateClient = uploadDataRateClient;
 			}
 		}
 	}
