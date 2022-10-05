@@ -603,7 +603,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			}else{
 				client->SetUploadDatarateWarnings(2);//DISABLED BY NO SLOTS
 			}
-			uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick(;
+			uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick();
 			if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
 				theApp->uploadBandwidthThrottler->SetLastKick();
 				AddLogLineC(CFormat(_("Upload KICK client: '%s' ip: '%s' rate: '%s kb/s' rate stable: '%s kb/s' levelKickSeconds: '%s'")) % (client->GetUserName()) % client->GetFullIP() % (client->GetUploadDatarate() / 1024.0) % (client->GetUploadDatarateStable() / 1024.0) % levelKickSeconds);
