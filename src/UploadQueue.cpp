@@ -596,12 +596,12 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			string infoTipeKick="";
 			if (m_uploadinglist.size() >= GetMaxSlots() && m_uploadinglist.size() < GetMaxSlots()*3) {//clients in queue 
 				levelKickSeconds = 60; 
-				client->SetUploadDatarateWarnings(3);//SOFT KICK
+				client->SetUploadDatarateWarnings(3);//ENABLED - SOFT KICK
 			}else if (m_uploadinglist.size() >= GetMaxSlots()*3){
 				levelKickSeconds = 30;
-				client->SetUploadDatarateWarnings(4);//AGRESIVE KICK
+				client->SetUploadDatarateWarnings(4);//ENABLED - AGRESIVE KICK
 			}else{
-				client->SetUploadDatarateWarnings(2);//DISABLED BY NO SLOTS
+				client->SetUploadDatarateWarnings(2);//DISABLED - BY NO SLOTS
 			}
 			uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick();
 			if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
@@ -610,10 +610,10 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 				return true;
 			}
 		}else{
-			client->SetUploadDatarateWarnings(1);// NO KICK
+			client->SetUploadDatarateWarnings(1);//ENABLED - NO KICK
 		}
 	}else{
-		client->SetUploadDatarateWarnings(0);//DISABLED BY FULL SPEED
+		client->SetUploadDatarateWarnings(0);//DISABLED - BY FULL SPEED
 	}
 	return false;
 }
