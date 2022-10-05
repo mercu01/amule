@@ -554,7 +554,8 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	uint32 maxUploadDataRateClient = 0;
 	uint32 minUploadDataRateClient = 0;
 	uint32 sumUploadDataRateClient = 0;
-	CUpDownClient *potentialSlowClient = NULL;
+	bool CurrentClientIsPotentialSlowClient = false;
+
 	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
 		uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
 		if (uploadDataRateClient > 0) {
@@ -563,7 +564,11 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			}
 			if (uploadDataRateClient < minUploadDataRateClient) {
 				minUploadDataRateClient = uploadDataRateClient;
-				potentialSlowClient = it++->GetClient();
+				if(it->GetClient() == client) {
+					CurrentClientIsPotentialSlowClient = true;
+				}else{
+					CurrentClientIsPotentialSlowClient = false;
+				}
 			}
 			sumUploadDataRateClient += uploadDataRateClient;
 		}
@@ -590,7 +595,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		//10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive.
 		//*(I can afford to look for quality clients)
 		//
-		if (potentialSlowClient == client){
+		if (CurrentClientIsPotentialSlowClient){
 		
 			uint32 levelKickSeconds = 0;
 			string infoTipeKick="";
