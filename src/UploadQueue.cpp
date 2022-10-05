@@ -560,7 +560,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	}
 	
 	//-- CALCULATE PERCENTAGE QUALITY
-	uint32 currentUploadDataRateClient = (client->GetUploadDatarate() / 1024.0);
+	uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
 	if (currentUploadDataRateClient > 0) {
 		uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
 		client->SetUploadDatarateQuality(percentCurrentClient);
