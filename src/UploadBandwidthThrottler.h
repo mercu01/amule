@@ -52,13 +52,14 @@ public:
     void RemoveFromAllQueues(ThrottledControlSocket* socket);
     void RemoveFromAllQueues(ThrottledFileSocket* socket);
 
+	uint32 GetLastKick();
+    void SetLastKick();
+	
     void EndThread();
 private:
     void DoRemoveFromAllQueues(ThrottledControlSocket* socket);
     bool RemoveFromStandardListNoLock(ThrottledFileSocket* socket);
 
-	uint32 GetLastKick();
-    void SetLastKick();
 	
     void* Entry();
 
