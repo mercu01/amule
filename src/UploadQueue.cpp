@@ -551,34 +551,35 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	
 	//--- CALCULATE CLIENT QUALITY ---
 	//--- MAX/MIN UPLOAD DATA RATE CLIENT ---
-	if (((sumUploadDataRateClient*100)/GetMaxUpload())<75){
-		uint32 maxUploadDataRateClient = 0;
-		uint32 minUploadDataRateClient = 0;
-		uint32 sumUploadDataRateClient = 0;
-		CUpDownClient *potentialSlowClient = NULL;
-		for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
-			uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
-			if (uploadDataRateClient > 0) {
-				if (uploadDataRateClient > maxUploadDataRateClient) {
-					maxUploadDataRateClient = uploadDataRateClient;
-				}
-				if (uploadDataRateClient < minUploadDataRateClient) {
-					minUploadDataRateClient = uploadDataRateClient;
-					potentialSlowClient = it++->GetClient();
-				}
-				sumUploadDataRateClient += uploadDataRateClient;
+	uint32 maxUploadDataRateClient = 0;
+	uint32 minUploadDataRateClient = 0;
+	uint32 sumUploadDataRateClient = 0;
+	CUpDownClient *potentialSlowClient = NULL;
+	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
+		uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
+		if (uploadDataRateClient > 0) {
+			if (uploadDataRateClient > maxUploadDataRateClient) {
+				maxUploadDataRateClient = uploadDataRateClient;
 			}
+			if (uploadDataRateClient < minUploadDataRateClient) {
+				minUploadDataRateClient = uploadDataRateClient;
+				potentialSlowClient = it++->GetClient();
+			}
+			sumUploadDataRateClient += uploadDataRateClient;
 		}
-		//-- CALCULATE PERCENTAGE QUALITY
-		uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
-		if (currentUploadDataRateClient > 0) {
-			uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
-			client->SetUploadDatarateQuality(percentCurrentClient);
-		}
-		//--- MAX UPLOAD DATA RATE CLIENT ---
-		//GetMaxSlots(
-		//
-		//When the speed is less than 75%:
+	}
+	//-- CALCULATE PERCENTAGE QUALITY
+	uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
+	if (currentUploadDataRateClient > 0) {
+		uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
+		client->SetUploadDatarateQuality(percentCurrentClient);
+	}
+	//--- MAX UPLOAD DATA RATE CLIENT ---
+	//GetMaxSlots(
+	//
+	//When the speed is less than 75%:
+	if (((sumUploadDataRateClient*100)/GetMaxUpload())<75){
+		
 		//---0---
 		//10 upload slots and <10 waiting in queue: none, no kick clients
 		//*(this state occurs at night)
