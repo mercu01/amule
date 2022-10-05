@@ -302,6 +302,12 @@ uint16 CUploadQueue::GetMaxSlots() const
 	}
 	return nMaxSlots;
 }
+uint16 CUploadQueue::GetMaxUpload() const
+{
+	uint16 nMaxUpload = thePrefs::GetMaxUpload();
+	
+	return nMaxUpload;
+}
 
 
 CUploadQueue::~CUploadQueue()
@@ -545,39 +551,68 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	
 	//--- CALCULATE CLIENT QUALITY ---
 	//--- MAX/MIN UPLOAD DATA RATE CLIENT ---
-	uint32 maxUploadDataRateClient = 0;
-	uint32 minUploadDataRateClient = 0;
-	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
-		uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
-		if (uploadDataRateClient > 0) {
-			if (uploadDataRateClient > maxUploadDataRateClient) {
-				maxUploadDataRateClient = uploadDataRateClient;
-			}
-			if (uploadDataRateClient < minUploadDataRateClient) {
-				minUploadDataRateClient = uploadDataRateClient;
+	if (((sumUploadDataRateClient*100)/GetMaxUpload())<75){
+		uint32 maxUploadDataRateClient = 0;
+		uint32 minUploadDataRateClient = 0;
+		uint32 sumUploadDataRateClient = 0;
+		CUpDownClient *potentialSlowClient = NULL;
+		for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
+			uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
+			if (uploadDataRateClient > 0) {
+				if (uploadDataRateClient > maxUploadDataRateClient) {
+					maxUploadDataRateClient = uploadDataRateClient;
+				}
+				if (uploadDataRateClient < minUploadDataRateClient) {
+					minUploadDataRateClient = uploadDataRateClient;
+					potentialSlowClient = it++->GetClient();
+				}
+				sumUploadDataRateClient += uploadDataRateClient;
 			}
 		}
-	}
-	
-	//-- CALCULATE PERCENTAGE QUALITY
-	uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
-	if (currentUploadDataRateClient > 0) {
-		uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
-		client->SetUploadDatarateQuality(percentCurrentClient);
-	}
-	//--- MAX UPLOAD DATA RATE CLIENT ---
-	if (m_uploadinglist.size() >= GetMaxSlots()) {//clients in queue
-		//client  < 50 kb/s  except < 1kb's (false client rate?)
-		if (client->GetUploadDatarate() >= 1024 && (client->GetUploadDatarate() / 1024.0) < 50) {		
-			if (client->GetUploadDatarateWarnings() >= 200){ //The client has 200 shipments with warning (< 50kb/s), before removing it from the queue , 200 shipments = 1 minute
-				client->SetUploadDatarateWarnings(0);
-				AddLogLineC(CFormat(_("Upload KICK client: '%s' rate: '%s kb/s' ip: '%s'")) % (client->GetUserName()) % (client->GetUploadDatarate() / 1024.0) % client->GetFullIP());
-				return true;
+		//-- CALCULATE PERCENTAGE QUALITY
+		uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
+		if (currentUploadDataRateClient > 0) {
+			uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
+			client->SetUploadDatarateQuality(percentCurrentClient);
+		}
+		//--- MAX UPLOAD DATA RATE CLIENT ---
+		//GetMaxSlots(
+		//
+		//When the speed is less than 75%:
+		//---0---
+		//10 upload slots and <10 waiting in queue: none, no kick clients
+		//*(this state occurs at night)
+		//---1---
+		//10 upload slots and >10 waiting in queue: kick slow clients, but slowly.
+		//*(I don't have many customers waiting, I can run out of customers in the queue)
+		//---2---
+		//10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive.
+		//*(I can afford to look for quality clients)
+		//
+		if (potentialSlowClient == client){
+		
+			uint32 levelKickSeconds = 0;
+			string infoTipeKick="";
+			if (m_uploadinglist.size() >= GetMaxSlots() && m_uploadinglist.size() < GetMaxSlots()*3) {//clients in queue 
+				levelKickSeconds = 60; 
+				client->SetUploadDatarateWarnings(3);//SOFT KICK
+			}else if (m_uploadinglist.size() >= GetMaxSlots()*3){
+				levelKickSeconds = 30;
+				client->SetUploadDatarateWarnings(4);//AGRESIVE KICK
 			}else{
-				client->SetUploadDatarateWarnings((client->GetUploadDatarateWarnings()+1));
-				return false;
+				client->SetUploadDatarateWarnings(2);//DISABLED BY NO SLOTS
 			}
+			uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick(;
+			if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
+				theApp->uploadBandwidthThrottler->SetLastKick();
+				AddLogLineC(CFormat(_("Upload KICK client: '%s' ip: '%s' rate: '%s kb/s' rate stable: '%s kb/s' levelKickSeconds: '%s'")) % (client->GetUserName()) % client->GetFullIP() % (client->GetUploadDatarate() / 1024.0) % (client->GetUploadDatarateStable() / 1024.0) % levelKickSeconds);
+				return true;
+			}
+		}else{
+			client->SetUploadDatarateWarnings(1);// NO KICK
 		}
+	}else{
+		client->SetUploadDatarateWarnings(0);//DISABLED BY FULL SPEED
 	}
 	return false;
 }

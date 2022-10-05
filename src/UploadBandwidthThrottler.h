@@ -57,6 +57,9 @@ private:
     void DoRemoveFromAllQueues(ThrottledControlSocket* socket);
     bool RemoveFromStandardListNoLock(ThrottledFileSocket* socket);
 
+	uint32 GetLastKick();
+    void SetLastKick();
+	
     void* Entry();
 
     bool m_doRun;
@@ -83,6 +86,7 @@ private:
 
     uint64 m_SentBytesSinceLastCall;
     uint64 m_SentBytesSinceLastCallOverhead;
+	uint32 m_LastKick;
 };
 
 

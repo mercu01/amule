@@ -48,6 +48,7 @@ UploadBandwidthThrottler::UploadBandwidthThrottler()
 {
 	m_SentBytesSinceLastCall = 0;
 	m_SentBytesSinceLastCallOverhead = 0;
+	m_LastKick = GetTickCountFullRes();
 
 	m_doRun = true;
 
@@ -96,7 +97,20 @@ uint64 UploadBandwidthThrottler::GetNumberOfSentBytesOverheadSinceLastCallAndRes
 
 	return numberOfSentBytesSinceLastCall;
 }
-
+//get timestamp last kick client upload
+uint32 UploadBandwidthThrottler::GetLastKick()
+{
+	wxMutexLocker lock( m_sendLocker );
+	
+	return m_LastKick;
+}
+//set timestamp last kick client upload
+void UploadBandwidthThrottler::SetLastKick()
+{
+	wxMutexLocker lock( m_sendLocker );
+	
+	m_LastKick = GetTickCountFullRes();
+}
 
 /**
  * Add a socket to the list of sockets that have upload slots. The main thread will
