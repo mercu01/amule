@@ -564,7 +564,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			}
 			if (uploadDataRateClient < minUploadDataRateClient) {
 				minUploadDataRateClient = uploadDataRateClient;
-				if(it->GetClient() == client) {
+				if(it->GetClient()->GetFullIP() == client->GetFullIP()) {
 					CurrentClientIsPotentialSlowClient = true;
 				}else{
 					CurrentClientIsPotentialSlowClient = false;
