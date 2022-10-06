@@ -566,6 +566,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 				minUploadDataRateClient = uploadDataRateClient;
 				if(it->GetClient() == client) {
 					CurrentClientIsPotentialSlowClient = true;
+					minUploadDataRateClientPercent = ((100*minUploadDataRateClient)/maxUploadDataRateClient)
 				}else{
 					CurrentClientIsPotentialSlowClient = false;
 				}
@@ -573,6 +574,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			sumUploadDataRateClient += uploadDataRateClient;
 		}
 	}
+	
 	//-- CALCULATE PERCENTAGE QUALITY
 	uint32 currentUploadDataRateClient = (client->GetUploadDatarateStable() / 1024.0);
 	if (currentUploadDataRateClient > 0) {
@@ -580,18 +582,19 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		client->SetUploadDatarateQuality(percentCurrentClient);
 	}
 	//--- MAX UPLOAD DATA RATE CLIENT ---
-	//GetMaxSlots(
 	//
-	//When the speed is less than 75%:
-	if (((sumUploadDataRateClient*100)/GetMaxUpload())<75){
-		
-		//---0---
+	//When the total speed is less than 80% and min upload data rate client is less than 80%
+	//
+	uint32 minUploadDataRateClientPercent = ((100*minUploadDataRateClient)/maxUploadDataRateClient);
+	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 80 && minUploadDataRateClientPercent < 80){
+		//
+		//---0---   DISABLED  -   BY NO SLOTS
 		//10 upload slots and <10 waiting in queue: none, no kick clients
 		//*(this state occurs at night)
-		//---1---
+		//---1---   ENABLED   -   SOFT KICK
 		//10 upload slots and >10 waiting in queue: kick slow clients, but slowly.
 		//*(I don't have many customers waiting, I can run out of customers in the queue)
-		//---2---
+		//---2---   ENABLED   -   AGRESIVE KICK
 		//10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive.
 		//*(I can afford to look for quality clients)
 		//
@@ -601,12 +604,12 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			string infoTipeKick="";
 			if (m_uploadinglist.size() >= GetMaxSlots() && m_uploadinglist.size() < GetMaxSlots()*3) {//clients in queue 
 				levelKickSeconds = 60; 
-				client->SetUploadDatarateWarnings(3);//ENABLED - SOFT KICK
+				client->SetUploadDatarateWarnings(3);//---1--- ENABLED - SOFT KICK
 			}else if (m_uploadinglist.size() >= GetMaxSlots()*3){
 				levelKickSeconds = 30;
-				client->SetUploadDatarateWarnings(4);//ENABLED - AGRESIVE KICK
+				client->SetUploadDatarateWarnings(4);//---2--- ENABLED - AGRESIVE KICK
 			}else{
-				client->SetUploadDatarateWarnings(2);//DISABLED - BY NO SLOTS
+				client->SetUploadDatarateWarnings(2);//---0--- //DISABLED - BY NO SLOTS
 			}
 			uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick();
 			if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
