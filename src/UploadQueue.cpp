@@ -552,7 +552,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	//--- CALCULATE CLIENT QUALITY ---
 	//--- MAX/MIN UPLOAD DATA RATE CLIENT ---
 	uint32 maxUploadDataRateClient = 0;
-	uint32 minUploadDataRateClient = 0;
+	uint32 minUploadDataRateClient = GetMaxUpload();
 	uint32 sumUploadDataRateClient = 0;
 	bool CurrentClientIsPotentialSlowClient = false;
 
@@ -564,7 +564,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 			}
 			if (uploadDataRateClient < minUploadDataRateClient) {
 				minUploadDataRateClient = uploadDataRateClient;
-				if(it->GetClient()->GetFullIP() == client->GetFullIP()) {
+				if(it->GetClient() == client) {
 					CurrentClientIsPotentialSlowClient = true;
 				}else{
 					CurrentClientIsPotentialSlowClient = false;
