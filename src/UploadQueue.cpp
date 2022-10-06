@@ -566,7 +566,6 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 				minUploadDataRateClient = uploadDataRateClient;
 				if(it->GetClient() == client) {
 					CurrentClientIsPotentialSlowClient = true;
-					minUploadDataRateClientPercent = ((100*minUploadDataRateClient)/maxUploadDataRateClient)
 				}else{
 					CurrentClientIsPotentialSlowClient = false;
 				}
