@@ -582,11 +582,11 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	}
 	//--- MAX UPLOAD DATA RATE CLIENT ---
 	//
-	//When the total speed is less than 80% and min upload data rate client is less than 80% and full upload slots
+	//When the total speed is less than 85% and min upload data rate client is less than 75% and full upload slots
 	//
 	uint32 minUploadDataRateClientPercent = ((100*minUploadDataRateClient)/maxUploadDataRateClient);
-	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 80) {
-		if (minUploadDataRateClientPercent < 80) {
+	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 85) {
+		if (minUploadDataRateClientPercent < 75) {
 			if (m_uploadinglist.size() >= GetMaxSlots()) { 
 				//
 				//---0---   DISABLED  -   BY NO SLOTS
