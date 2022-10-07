@@ -601,10 +601,10 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		
 			uint32 levelKickSeconds = 0;
 			string infoTipeKick="";
-			if (m_uploadinglist.size() >= GetMaxSlots() && m_uploadinglist.size() < GetMaxSlots()*3) {//clients in queue 
+			if (m_waitinglist.size() >= GetMaxSlots() && m_waitinglist.size() < GetMaxSlots()*3) {//clients in queue 
 				levelKickSeconds = 60; 
 				client->SetUploadDatarateWarnings(3);//---1--- ENABLED - SOFT KICK
-			}else if (m_uploadinglist.size() >= GetMaxSlots()*3){
+			}else if (m_waitinglist.size() >= GetMaxSlots()*3){
 				levelKickSeconds = 30;
 				client->SetUploadDatarateWarnings(4);//---2--- ENABLED - AGRESIVE KICK
 			}else{
