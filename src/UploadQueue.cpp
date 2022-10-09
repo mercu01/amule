@@ -555,6 +555,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	uint32 minUploadDataRateClient = GetMaxUpload();
 	uint32 sumUploadDataRateClient = 0;
 	bool CurrentClientIsPotentialSlowClient = false;
+	uint32 countNewsClients = 0;
 
 	for (CClientRefList::const_iterator it = m_uploadinglist.begin(); it != m_uploadinglist.end(); ++it) {
 		uint32 uploadDataRateClient = (it->GetClient()->GetUploadDatarateStable() / 1024.0);
@@ -571,6 +572,9 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 				}
 			}
 			sumUploadDataRateClient += uploadDataRateClient;
+		} else {
+		  //new client (when upload time is less 1 min)
+		  countNewsClients ++;
 		}
 	}
 	
@@ -582,12 +586,13 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	}
 	//--- MAX UPLOAD DATA RATE CLIENT ---
 	//
-	//When the total speed is less than 85% and min upload data rate client is less than 75% and full upload slots
+	//When the total speed is less than 85% and min upload data rate client is less than 75% and full upload slots and max new client is less 25%
 	//
 	uint32 minUploadDataRateClientPercent = ((100*minUploadDataRateClient)/maxUploadDataRateClient);
 	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 85) {
 		if (minUploadDataRateClientPercent < 75) {
 			if (m_uploadinglist.size() >= GetMaxSlots()) { 
+			  if (countNewsClients<=std::max((m_uploadinglist.size()/4),2)) {
 				//
 				//---0---   DISABLED  -   BY NO SLOTS
 				//10 upload slots and <10 waiting in queue: none, no kick clients
@@ -620,6 +625,9 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 					}
 				}else{
 					client->SetUploadDatarateWarnings(6);//NO KICK, QUALITY slot
+				}
+				}else{
+				  client->SetUploadDatarateWarnings(7);//DISABLED - MAX NEWS SLOTS
 				}
 			}else{
 				client->SetUploadDatarateWarnings(5);//DISABLED - SLOT AVAILABLES
