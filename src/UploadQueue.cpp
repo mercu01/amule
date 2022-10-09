@@ -592,7 +592,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 85) {
 		if (minUploadDataRateClientPercent < 75) {
 			if (m_uploadinglist.size() >= GetMaxSlots()) { 
-			  if (countNewsClients<=std::max((m_uploadinglist.size()/4),2)) {
+			  if (countNewsClients<=(m_uploadinglist.size()/4)) {
 				//
 				//---0---   DISABLED  -   BY NO SLOTS
 				//10 upload slots and <10 waiting in queue: none, no kick clients
