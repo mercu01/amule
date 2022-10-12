@@ -18,8 +18,12 @@ Docker for build:
 	
 ## Issue:
 The upload slot algorithm is broken. Amule generates infinite upload slots, each slot of a few kb/s.
-	
+
+Amule does not get credits, the download is penalized.
+
 ## Summary of changes
+### 2.3.3_broadband_RC3
+ - Feature: Advanced Upload Manager, [more info](#feature-advanced-upload-manager)
 ### 2.3.3_broadband_RC2
  - Fix Default upload rate = 0 for broadband branch, 1 slot = 1 mb/s upload rate
 ### 2.3.3_broadband_RC1
@@ -33,6 +37,11 @@ The upload slot algorithm is broken. Amule generates infinite upload slots, each
 
 ## Example
 ### I have 15mb/s upload connection:
+#### Option A:
+ - Configure 20 slots allocation, (1 slot = 500 Kb's, 20 slots = 10 Mb's approximate)
+ - Max upload 10000
+ - Max download 0
+#### Option B:
  - Configure 20 slots allocation, (1 slot = 500 Kb's, 20 slots = 10 Mb's approximate)
  - Max upload 0
  - Max download 0
@@ -47,9 +56,31 @@ The upload slot algorithm is broken. Amule generates infinite upload slots, each
 
 ![image](https://user-images.githubusercontent.com/9451876/187071859-3afc0544-f550-4fd5-9de2-b1b88fccc1be.png)
 
-### Results, uploading and downloading:
+## Feature: Advanced Upload Manager
+![image](https://user-images.githubusercontent.com/9451876/195408957-a91841a9-986c-4e8d-abe4-3145d524564d.png)
 
-![uploading and downloading](https://user-images.githubusercontent.com/9451876/187890831-9469d829-04cb-406c-bdff-c4a938973a5c.jpg)
+The system will handle the slots, you'll get a steady load. If your load queue is big, the system will kick slow client. When everyone is fast, it will be deactivated
+### More technical information:
+Basically, we will try to find the maximum upload depending on the amount of clients that are waiting.
+#### ENABLED when:  
+- SOFT KICK 
+Example: 10 upload slots and >10 waiting in queue: kick slow clients, but slowly. (1 kick every 1 min)
+*(I don't have many customers waiting, I can run out of customers in the queue)
+
+![image](https://user-images.githubusercontent.com/9451876/195412442-0b54d30e-c877-4421-b983-8d14eecb70c0.png)
+
+- HARD KICK
+Example: 10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive. (1 kick every 30s)
+*(I can afford to look for quality clients)
+
+![image](https://user-images.githubusercontent.com/9451876/195413533-d2b9fecc-a637-4f8b-ac52-696109d09613.png)
+
+#### DISABLED when: 
+- Very few customers in the queue, Example: 10 upload slots and <10 waiting in queue: none, no kick clients *(this state occurs at night)
+- The total speed is over than 85%.
+- The slowest client is not very slow, at least 75% compared to the fastest client.
+- New clients, they can't be kicked. (It is considered a new client, when it takes less than 1 minute).
+- New clients is over 25% of the slots 
 
 ## Inspired by
 - [itlezy/eMule](https://github.com/itlezy/eMule )
