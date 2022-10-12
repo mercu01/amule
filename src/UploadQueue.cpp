@@ -584,6 +584,7 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 		uint32 percentCurrentClient = ((100*currentUploadDataRateClient)/maxUploadDataRateClient);
 		client->SetUploadDatarateQuality(percentCurrentClient);
 	}
+	//--- Upload Manager - 2.3.3_broadband_RC3 ---
 	//--- MAX UPLOAD DATA RATE CLIENT ---
 	//
 	//When the total speed is less than 85% and min upload data rate client is less than 75% and full upload slots and max new client is less 25%
@@ -592,40 +593,40 @@ bool CUploadQueue::CheckForTimeOverLowClients(CUpDownClient* client)
 	if (((sumUploadDataRateClient*100)/GetMaxUpload()) < 85) {
 		if (minUploadDataRateClientPercent < 75) {
 			if (m_uploadinglist.size() >= GetMaxSlots()) { 
-			  if (countNewsClients<=(m_uploadinglist.size()/4)) {
-				//
-				//---0---   DISABLED  -   BY NO SLOTS
-				//10 upload slots and <10 waiting in queue: none, no kick clients
-				//*(this state occurs at night)
-				//---1---   ENABLED   -   SOFT KICK
-				//10 upload slots and >10 waiting in queue: kick slow clients, but slowly.
-				//*(I don't have many customers waiting, I can run out of customers in the queue)
-				//---2---   ENABLED   -   AGRESIVE KICK
-				//10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive.
-				//*(I can afford to look for quality clients)
-				//
-				if (CurrentClientIsPotentialSlowClient){
-				
-					uint32 levelKickSeconds = 0;
-					string infoTipeKick="";
-					if (m_waitinglist.size() >= GetMaxSlots() && m_waitinglist.size() < GetMaxSlots()*3) {//clients in queue 
-						levelKickSeconds = 60; 
-						client->SetUploadDatarateWarnings(1);//---1--- ENABLED - SOFT KICK
-					}else if (m_waitinglist.size() >= GetMaxSlots()*3){
-						levelKickSeconds = 30;
-						client->SetUploadDatarateWarnings(2);//---2--- ENABLED - HARD KICK
+				if (countNewsClients<=(m_uploadinglist.size()/4)) {
+					//
+					//---0---   DISABLED  -   BY NO SLOTS
+					//10 upload slots and <10 waiting in queue: none, no kick clients
+					//*(this state occurs at night)
+					//---1---   ENABLED   -   SOFT KICK
+					//10 upload slots and >10 waiting in queue: kick slow clients, but slowly.
+					//*(I don't have many customers waiting, I can run out of customers in the queue)
+					//---2---   ENABLED   -   AGRESIVE KICK
+					//10 upload slots and >30 waiting in queue: kick slow clients, but more aggressive.
+					//*(I can afford to look for quality clients)
+					//
+					if (CurrentClientIsPotentialSlowClient){
+					
+						uint32 levelKickSeconds = 0;
+						string infoTipeKick="";
+						if (m_waitinglist.size() >= GetMaxSlots() && m_waitinglist.size() < GetMaxSlots()*3) {//clients in queue 
+							levelKickSeconds = 60; 
+							client->SetUploadDatarateWarnings(1);//---1--- ENABLED - SOFT KICK
+						}else if (m_waitinglist.size() >= GetMaxSlots()*3){
+							levelKickSeconds = 30;
+							client->SetUploadDatarateWarnings(2);//---2--- ENABLED - HARD KICK
+						}else{
+							client->SetUploadDatarateWarnings(0);//---0--- //DISABLED - BY NO SLOTS
+						}
+						uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick();
+						if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
+							theApp->uploadBandwidthThrottler->SetLastKick();
+							AddLogLineC(CFormat(_("Upload KICK client: '%s' ip: '%s' rate: '%s kb/s' rate stable: '%s kb/s' levelKickSeconds: '%s'")) % (client->GetUserName()) % client->GetFullIP() % (client->GetUploadDatarate() / 1024.0) % (client->GetUploadDatarateStable() / 1024.0) % levelKickSeconds);
+							return true;
+						}
 					}else{
-						client->SetUploadDatarateWarnings(0);//---0--- //DISABLED - BY NO SLOTS
+						client->SetUploadDatarateWarnings(6);//NO KICK, QUALITY slot
 					}
-					uint32 timeSinceLastLoop = GetTickCountFullRes() - theApp->uploadBandwidthThrottler->GetLastKick();
-					if(levelKickSeconds > 0 && timeSinceLastLoop > SEC2MS(levelKickSeconds)){
-						theApp->uploadBandwidthThrottler->SetLastKick();
-						AddLogLineC(CFormat(_("Upload KICK client: '%s' ip: '%s' rate: '%s kb/s' rate stable: '%s kb/s' levelKickSeconds: '%s'")) % (client->GetUserName()) % client->GetFullIP() % (client->GetUploadDatarate() / 1024.0) % (client->GetUploadDatarateStable() / 1024.0) % levelKickSeconds);
-						return true;
-					}
-				}else{
-					client->SetUploadDatarateWarnings(6);//NO KICK, QUALITY slot
-				}
 				}else{
 				  client->SetUploadDatarateWarnings(7);//DISABLED - MAX NEWS SLOTS
 				}
