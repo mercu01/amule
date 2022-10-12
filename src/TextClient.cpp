@@ -782,13 +782,19 @@ void CamulecmdApp::Process_Answer_v2(const CECPacket *response)
 				const CECTag *partfileName = tag->GetTagByName(EC_TAG_PARTFILE_NAME);
 				const CECTag *partfileSizeXfer = tag->GetTagByName(EC_TAG_PARTFILE_SIZE_XFER);
 				const CECTag *partfileSpeed = tag->GetTagByName(EC_TAG_CLIENT_UP_SPEED);
+				const CECTag *partfileSpeedStable = tag->GetTagByName(EC_TAG_CLIENT_UP_SPEED_STABLE);
+				const CECTag *partfileSpeedWarning = tag->GetTagByName(EC_TAG_CLIENT_UP_SPEED_WARNINGS);
+				const CECTag *partfileSpeedQuality = tag->GetTagByName(EC_TAG_CLIENT_UP_SPEED_QUALITY);
 				if (clientName && partfileName && partfileSizeXfer && partfileSpeed) {
 					s <<	wxT("\n") <<
 						CFormat(wxT("%10u ")) % tag->GetInt() <<
 						clientName->GetStringData() << wxT(" ") <<
 						partfileName->GetStringData() << wxT(" ") <<
 						CastItoXBytes(partfileSizeXfer->GetInt()) << wxT(" ") <<
-						CastItoSpeed(partfileSpeed->GetInt());
+						CastItoSpeed(partfileSpeed->GetInt()) << wxT(" ") <<
+						partfileSpeedWarning->GetStringData() << wxT(" ") <<
+						CastItoSpeed(partfileSpeedStable->GetInt()) << wxT(" ") <<
+						partfileSpeedQuality->GetStringData();
 				}
 			}
 			break;

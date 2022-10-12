@@ -289,6 +289,9 @@ EC_TAG_CLIENT                             0x0600
 	EC_TAG_CLIENT_DOWNLOAD_TOTAL              0x060B
 	EC_TAG_CLIENT_DOWNLOAD_STATE              0x060C
 	EC_TAG_CLIENT_UP_SPEED                    0x060D
+	EC_TAG_CLIENT_UP_SPEED_STABLE             0x0632
+	EC_TAG_CLIENT_UP_SPEED_WARNINGS           0x0631
+	EC_TAG_CLIENT_UP_SPEED_QUALITY            0x0633
 	EC_TAG_CLIENT_DOWN_SPEED                  0x060E
 	EC_TAG_CLIENT_FROM                        0x060F
 	EC_TAG_CLIENT_USER_IP                     0x0610

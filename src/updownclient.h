@@ -256,8 +256,11 @@ public:
 	uint64		GetSessionUp() const		{ return m_nTransferredUp - m_nCurSessionUp; }
 	void		ResetSessionUp();
 	uint32		GetUploadDatarate() const	{ return m_nUpDatarate; }
+	uint32		GetUploadDatarateStable() const	{ return m_nUpDatarateStable; }
 	uint32		GetUploadDatarateWarnings() const	{ return m_nUpDatarateWarnings; }
 	void		SetUploadDatarateWarnings(uint32 val)	{ m_nUpDatarateWarnings = val; }
+	uint32		GetUploadDatarateQuality() const	{ return m_nUpDatarateQuality; }
+	void		SetUploadDatarateQuality(uint32 val)	{ m_nUpDatarateQuality = val; }
 	
 	//uint32		GetWaitTime() const		{ return m_dwUploadTime - GetWaitStartTime(); }
 	uint32		GetUpStartTimeDelay() const	{ return ::GetTickCount() - m_dwUploadTime; }
@@ -602,9 +605,14 @@ private:
 	// Upload data rate computation
 	//
 	uint32		m_nUpDatarate;
+	uint32		m_nUpDatarateStable;
 	uint32		m_nUpDatarateWarnings;
+	uint32		m_nUpDatarateQuality;
 	uint32		m_nSumForAvgUpDataRate;
+	uint32		m_nSumForAvgUpDataRate_stable;
 	std::list<TransferredData> m_AvarageUDR_list;
+	std::list<TransferredData> m_AvarageUDR_list_stable;
+
 
 
 	/**

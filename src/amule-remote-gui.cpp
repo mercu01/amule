@@ -1226,7 +1226,8 @@ CUpDownClient::CUpDownClient(const CEC_UpDownClient_Tag *tag) : CECID(tag->ID())
 	m_nTransferredDown		= 0;
 	m_nTransferredUp		= 0;
 	m_nUpDatarate			= 0;
-	m_nUpDatarateWarnings = 0;
+	m_nUpDatarateStable		= 0;
+	m_nUpDatarateWarnings 	= 0;
 	m_uploadingfile			= NULL;
 	m_waitingPosition		= 0;
 	m_nUploadState			= 0;
@@ -1399,6 +1400,10 @@ void CUpDownClientListRem::ProcessItemUpdate(
 	}
 
 	tag->SpeedUp(&client->m_nUpDatarate);
+	tag->SpeedUpStable(&client->m_nUpDatarateStable);
+	tag->SpeedUpWarnings(&client->m_nUpDatarateWarnings);
+	tag->SpeedUpQuality(&client->m_nUpDatarateQuality);
+	
 	if ( client->m_nDownloadState == DS_DOWNLOADING ) {
 		tag->SpeedDown(&client->m_kBpsDown);
 	} else {

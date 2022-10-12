@@ -71,6 +71,7 @@ public:
 private:
 	void	RemoveFromWaitingQueue(CClientRefList::iterator pos);
 	uint16	GetMaxSlots() const;
+	uint16	GetMaxUpload() const;
 	void	AddUpNextClient(CUpDownClient* directadd = 0);
 	bool	IsSuspended(const CMD4Hash& hash) { return suspendedUploadsSet.find(hash) != suspendedUploadsSet.end(); }
 	void	SortGetBestClient(CClientRef * bestClient = NULL);

@@ -157,6 +157,15 @@ wxString CGenericClientListCtrl::TranslateCIDToName(GenericColumnEnum cid)
 		case ColumnUserSpeedUp:
 			name = wxT("s");
 			break;
+		case ColumnUserSpeedUpStable:
+			name = wxT("s");
+			break;
+		case ColumnUserSpeedUpWarnings:
+			name = wxT("s");
+			break;
+		case ColumnUserSpeedUpQuality:
+			name = wxT("s");
+			break;
 		case ColumnUserProgress:
 			name = wxT("P");
 			break;
@@ -895,6 +904,29 @@ void CGenericClientListCtrl::DrawClientItem(wxDC* dc, int nColumn, const wxRect&
 				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
 			}
 			break;
+			case ColumnUserSpeedUpStable:
+			// Datarate is in bytes.
+			if (item->GetType() != A4AF_SOURCE && client.GetUploadDatarateStable() >= 1024) {
+				if (client.GetUploadDatarateStable() >= 1048576) {
+					buffer = CFormat(_("%.1f MB/s")) % (client.GetUploadDatarateStable() / 1048576.0);
+				} else {
+					buffer = CFormat(_("%.1f kB/s")) % (client.GetUploadDatarateStable() / 1024.0);
+				}
+				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
+			}
+			break;
+		case ColumnUserSpeedUpWarnings:
+			if (item->GetType() != A4AF_SOURCE && client.GetUploadDatarateWarnings()) {
+				buffer =  CFormat(_("%")) % (client.GetUploadDatarateWarnings());
+				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
+			}
+			break;
+		case ColumnUserSpeedUpQuality:
+			if (item->GetType() != A4AF_SOURCE && client.GetUploadDatarateQuality()) {
+				buffer =  CFormat(_("%")) % (client.GetUploadDatarateQuality());
+				dc->DrawText(buffer, rect.GetX(), rect.GetY() + iTextOffset);
+			}
+			break;
 		case ColumnUserProgress:
 			if ( thePrefs::ShowProgBar() ) {
 				int iWidth = rect.GetWidth() - 2;
@@ -1152,6 +1184,16 @@ int CGenericClientListCtrl::Compare(
 		// Sort by speed
 		case ColumnUserSpeedUp:
 			return CmpAny( client1.GetUploadDatarate(), client2.GetUploadDatarate() );
+
+		// Sort by speed
+		case ColumnUserSpeedUpStable:
+			return CmpAny( client1.GetUploadDatarateStable(), client2.GetUploadDatarateStable() );
+
+		case ColumnUserSpeedUpWarnings:
+			return CmpAny( client1.GetUploadDatarateWarnings(), client2.GetUploadDatarateWarnings() );
+
+		case ColumnUserSpeedUpQuality:
+			return CmpAny( client1.GetUploadDatarateQuality(), client2.GetUploadDatarateQuality() );
 
 		// Sort by parts offered
 		case ColumnUserProgress:

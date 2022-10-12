@@ -921,6 +921,12 @@ void amule_upload_file_prop_get(void *ptr, char *prop_name, PHP_VALUE_NODE *resu
 		result->int_val = obj->nTransferredDown;
 	} else if ( strcmp(prop_name, "xfer_speed") == 0 ) {
 		result->int_val = obj->nSpeed;
+	} else if ( strcmp(prop_name, "warnings") == 0 ) {
+		result->int_val = obj->nUpDatarateWarnings;
+	} else if ( strcmp(prop_name, "xfer_speed_stable") == 0 ) {
+		result->int_val = obj->nSpeedStable;
+	} else if ( strcmp(prop_name, "xfer_up_quality") == 0 ) {
+		result->int_val = obj->nQuality;
 	} else {
 		php_report_error(PHP_ERROR, "'UploadFile' property [%s] is unknown", prop_name);
 	}

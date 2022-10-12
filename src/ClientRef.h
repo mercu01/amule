@@ -150,6 +150,9 @@ public:
 	uint64				GetTransferredUp() const;
 	uint16				GetUDPPort() const;
 	uint32				GetUploadDatarate() const;
+	uint32				GetUploadDatarateWarnings() const;
+	uint32				GetUploadDatarateStable() const;
+	uint32				GetUploadDatarateQuality() const;	
 	uint64				GetUploadedTotal() const;
 	const CKnownFile*	GetUploadFile() const;
 	uint16				GetUploadQueueWaitingPosition() const;
