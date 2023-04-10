@@ -124,14 +124,13 @@ var initvals = new Object;
 		$conn_opts = array("max_line_up_cap","max_up_limit",
 			"max_line_down_cap","max_down_limit", "slot_alloc", 
 			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en", 
-      "EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS",
-      "EC_TAG_CONN_START_MINUTALT_RATETS",
-      "EC_TAG_CONN_END_HOUR_ALTEALT_RATE
-      "EC_TAG_CONN_END_MINUTALT_RATETS",
-      "EC_TAG_CONN_MAX_UL_ALTEALT_RATE
+      "EC_TAG_CONN_START_HOUR_ALT_RATE",
+      "EC_TAG_CONN_START_MINUTE_ALT_RATE",
+      "EC_TAG_CONN_END_HOUR_ALT_RATE",
+      "EC_TAG_CONN_END_MINUTE_ALT_RATE",
+      "EC_TAG_CONN_MAX_UL_ALT_RATE",
       "EC_TAG_CONN_MAX_DL_ALT_RATE",
-      "EC_TAG_CONN_SLOT_ALALT_RATETE_LIMITS");
-		$webserver_opts = array("use_gzipALT_RATE
+      "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE");
 		
 		$all_opts;
 		foreach ($conn_opts as $i) {
@@ -184,23 +183,23 @@ function init_data()
 		"min_free_space",
 		"autorefresh_time",
     "EC_TAG_CONN_START_HOUR_ALT_RATE",
-		"EC_TAG_CONN_START_MINUTE_ALT_RATE",
-		"EC_TAG_CONN_END_HOUR_ALT_RATE",
-		"EC_TAG_CONN_END_MINUTE_ALT_RATE",
-		"EC_TAG_CONN_MAX_UL_ALT_RATE",
-		"EC_TAG_CONN_MAX_DL_ALT_RATE",
-		"EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE"
+    "EC_TAG_CONN_START_MINUTE_ALT_RATE",
+    "EC_TAG_CONN_END_HOUR_ALT_RATE",
+    "EC_TAG_CONN_END_MINUTE_ALT_RATE",
+    "EC_TAG_CONN_MAX_UL_ALT_RATE",
+    "EC_TAG_CONN_MAX_DL_ALT_RATE",
+    "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE"
 		)
 	for(i = 0; i < str_param_names.length; i++) {
 		frm[str_param_names[i]].value = initvals[str_param_names[i]];
 	}
-	var check_param_names = newALT_RATE
-		"autoconn_en", "reconn_en"ALT_RATE_paused",
-		"aich_trust", "alloc_fALT_RATEs",
-		"check_free_space", "extALT_RATE",
-		"new_files_auto_dl_pALT_RATEl_prio",
-		"use_gzip"ALT_RATE
-		)ALT_RATE
+	var check_param_names = new Array(
+		"autoconn_en", "reconn_en", "udp_dis", "new_files_paused",
+		"aich_trust", "alloc_full", "alloc_full_chunks",
+		"check_free_space", "extract_metadata", "ich_en",
+		"new_files_auto_dl_prio", "new_files_auto_ul_prio",
+		"use_gzip"
+		)
 	for(i = 0; i < check_param_names.length; i++) {
 		frm[check_param_names[i]].checked = initvals[check_param_names[i]] == "1" ? true : false;
 	}
@@ -313,48 +312,48 @@ function init_data()
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Alternative Rate limit - START HOUR</td>
             <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            <input name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Alternative Rate limit - START MINUTE</td>
             <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+            <input name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Alternative Rate limit - END HOUR</td>
             <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            <input name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Alternative Rate limit - END MINUTE</td>
             <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+            <input name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
           </tr>
           <tr> 
-            <td width="22" height="25">&nbsp;</tALT_RATEALT_RATE
+            <td width="22" height="25">&nbsp;</t>
             <td height="25">Alternative Rate limit - Max upload rate </td>
             <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
+            <input name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Alternative Rate limit - Max download rate </td>
             <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
-          </tr>ALT_RATEALT_RATE
+            <input name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
+          </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
             <td height="25">Slot allocation </td>
             <td width="63" height="25">
-            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
+            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
           </tr>
         </table></td>
       <td width="50%" rowspan="3"> 
         <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
-          <tr> ALT_RATEALT_RATE
+          <tr> 
             <td width="22">&nbsp;</td>
             <th> File settings </th>
             <td width="63">&nbsp;</td>
@@ -364,7 +363,7 @@ function init_data()
             <td height="25">&nbsp; </td>
             <td width="63" height="25"></td>
           </tr>
-          <tr> ALT_RATEALT_RATE
+          <tr> 
             <td width="22" height="25"> 
               <input name="check_free_space" type="checkbox" id="check_free_space5"></td>
             <td height="25"> Check free space =&gt; Minimum free space (Mb) </td>
@@ -374,7 +373,7 @@ function init_data()
           <tr> 
             <td width="22" height="25"> 
               <input name="new_files_auto_dl_prio" type="checkbox" id="new_files_auto_dl_prio4"></td>
-            <td height="25"> Added download ALT_RATEy</td>ALT_RATE
+            <td height="25"> Added download files have auto priority</td>
             <td width="63" height="25"></td>
           </tr>
           <tr> 
@@ -384,7 +383,7 @@ function init_data()
             <td width="63" height="25"></td>
           </tr>
           <tr> 
-            <td width="22" height="25"> ALT_RATEALT_RATE
+            <td width="22" height="25"> 
               <input name="ich_en" type="checkbox" id="ich_en5"></td>
             <td height="25"> I.C.H. active</td>
             <td width="63" height="25"></td>
@@ -394,7 +393,7 @@ function init_data()
               <input name="aich_trust" type="checkbox" id="aich_trust4"></td>
             <td height="25"> AICH trusts every hash (not recommended)</td>
             <td width="63" height="25"></td>
-          </tr>ALT_RATEALT_RATE
+          </tr>
           <tr> 
             <td width="22" height="25"> 
               <input name="alloc_full_chunks" type="checkbox" id="alloc_full_chunks4"></td>

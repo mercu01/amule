@@ -340,7 +340,7 @@ enum ECTagNames {
 			EC_TAG_CONN_MAX_UL_ALT_RATE				  = 0x1314,
 			EC_TAG_CONN_MAX_DL_ALT_RATE				  = 0x1315,
 			EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE	  = 0x1316,
-		EC_TAG_PREFS_MESSAGEFILTER                = 0x1400;
+		EC_TAG_PREFS_MESSAGEFILTER                = 0x1400,
 			EC_TAG_MSGFILTER_ENABLED                  = 0x1401,
 			EC_TAG_MSGFILTER_ALL                      = 0x1402,
 			EC_TAG_MSGFILTER_FRIENDS                  = 0x1403,
@@ -792,13 +792,13 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x1401: return wxT("EC_TAG_MSGFILTER_ENABLED");
 		case 0x1402: return wxT("EC_TAG_MSGFILTER_ALL");
 		case 0x1403: return wxT("EC_TAG_MSGFILTER_FRIENDS");
-		case 0x1404: return wxT("EC_TAG_MSGFILTER_SECUREALT_RATE
-		case 0x1405: return wxT("EC_TAG_MSGFILTER_BY_KEYWOALT_RATE
-		case 0x1406: return wxT("EC_TAG_MSGFILTER_KEYWALT_RATE
-		case 0x1500: return wxT("EC_TAG_PREFS_REMOTECTRLALT_RATE
-		case 0x1501: return wxT("EC_TAG_WEBSERVER_AUALT_RATE
-		case 0x1502: return wxT("EC_TAG_WEBSERVER_POALT_RATE
-		case 0x1503: return wxT("EC_TAG_WEBSERVER_GUEST");ALT_RATE
+		case 0x1404: return wxT("EC_TAG_MSGFILTER_SECURE");
+		case 0x1405: return wxT("EC_TAG_MSGFILTER_BY_KEYWORD");
+		case 0x1406: return wxT("EC_TAG_MSGFILTER_KEYWORDS");
+		case 0x1500: return wxT("EC_TAG_PREFS_REMOTECTRL");
+		case 0x1501: return wxT("EC_TAG_WEBSERVER_AUTORUN");
+		case 0x1502: return wxT("EC_TAG_WEBSERVER_PORT");
+		case 0x1503: return wxT("EC_TAG_WEBSERVER_GUEST");
 		case 0x1504: return wxT("EC_TAG_WEBSERVER_USEGZIP");
 		case 0x1505: return wxT("EC_TAG_WEBSERVER_REFRESH");
 		case 0x1506: return wxT("EC_TAG_WEBSERVER_TEMPLATE");
