@@ -31,6 +31,7 @@
 #include <wx/arrstr.h>			// Needed for wxArrayString
 
 #include <map>
+#include <chrono>
 
 #include "Proxy.h"
 #include "OtherStructs.h"
@@ -229,7 +230,17 @@ public:
 	static uint16		GetSlotAllocation()		{ return s_slotallocation; }
 
   	static bool useAlternativeRanges () {
-        return false;
+		int startHour = s_startHourAltRate;
+		int startMinute = s_startMinuteAltRate;
+		int endHour = s_endHourAltRate;
+		int endMinute = s_endMinuteAltRate;
+        auto now = std::chrono::system_clock::now();
+        auto now_mins = std::chrono::time_point_cast<std::chrono::minutes>(now);
+        int currentHour = now_mins.time_since_epoch().count() / 60;
+        int currentMinute = now_mins.time_since_epoch().count() % 60;
+        int startTotalMinutes = startHour * 60 + startMinute;
+        int endTotalMinutes = endHour * 60 + endMinute;
+        return (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
     }
 	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
 	static uint16		GetStartMinuteAltRate()		{ return s_startMinuteAltRate; }
