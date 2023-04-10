@@ -235,12 +235,18 @@ public:
 		int startMinute = s_startMinuteAltRate;
 		int endHour = s_endHourAltRate;
 		int endMinute = s_endMinuteAltRate;
-     	auto now = std::chrono::system_clock::now();
-		auto now_mins = std::chrono::duration_cast<std::chrono::minutes>(now.time_since_epoch());
-		std::chrono::minutes startTotalMinutes = std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
-		std::chrono::minutes endTotalMinutes = std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
-		bool rtn = (now_mins >= startTotalMinutes) && (now_mins <= endTotalMinutes); 
-		AddLogLineCS(CFormat(wxT("useAlternativeRanges: %s - startTotalMinutes: %s - endTotalMinutes: %s - now_mins: %s ")) % rtn % startTotalMinutes % endTotalMinutes % now_mins);
+     	
+		auto now = std::chrono::system_clock::now();
+        auto time_now = std::chrono::system_clock::to_time_t(now);
+        tm tm_now = *std::localtime(&time_now);
+        tm_now.tm_hour = 0;
+        tm_now.tm_min = 0;
+        tm_now.tm_sec = 0;
+        auto midnight = std::chrono::system_clock::from_time_t(std::mktime(&tm_now));
+        auto start = midnight + std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
+        auto end = midnight + std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
+		bool rtn = (now >= start) && (now <= end);
+		AddLogLineCS(CFormat(wxT("useAlternativeRanges: %s - start: %s - end: %s - now: %s ")) % rtn % start % end % now);
 		if (s_lastValueAltRate != rtn) {
 			s_lastValueAltRate = rtn;
 			if (rtn) {
