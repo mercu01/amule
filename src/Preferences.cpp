@@ -88,6 +88,15 @@ Cfg_Lang_Base * CPreferences::s_cfgLang;
 uint16		CPreferences::s_maxupload;
 uint16		CPreferences::s_maxdownload;
 uint16		CPreferences::s_slotallocation;
+
+uint16		CPreferences::s_startHourAltRate;
+uint16		CPreferences::s_startMinuteAltRate;
+uint16		CPreferences::s_endHourAltRate;
+uint16		CPreferences::s_endMinuteAltRate;
+uint16		CPreferences::s_maxUploadAltRate;
+uint16		CPreferences::s_maxDownloadAltRate;
+uint16		CPreferences::s_slotAllocationAltRate;
+
 wxString	CPreferences::s_Addr;
 uint16		CPreferences::s_port;
 uint16		CPreferences::s_udpport;
@@ -1019,6 +1028,15 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_MAXUP,		(MkCfg_Int( wxT("/eMule/MaxUpload"), s_maxupload, 0 )));
 	NewCfgItem(IDC_MAXDOWN,		(MkCfg_Int( wxT("/eMule/MaxDownload"), s_maxdownload, 0 )));
 	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/SlotAllocation"), s_slotallocation, 2 )));
+
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/StartHourAltRate"), s_startHourAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/StartMinuteAltRate"), s_startMinuteAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/EndHourAltRate"), s_endHourAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/EndMinuteAltRate"), s_endMinuteAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/MaxUploadAltRate"), s_maxUploadAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/MaxDownloadAltRate"), s_maxDownloadAltRate, 0 )));
+	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/SlotAllocationAltRate"), s_slotAllocationAltRate, 0 )));
+
 	NewCfgItem(IDC_PORT,		(MkCfg_Int( wxT("/eMule/Port"), s_port, DEFAULT_TCP_PORT )));
 	NewCfgItem(IDC_UDPPORT,		(MkCfg_Int( wxT("/eMule/UDPPort"), s_udpport, DEFAULT_UDP_PORT )));
 	NewCfgItem(IDC_UDPENABLE,	(new Cfg_Bool( wxT("/eMule/UDPEnable"), s_UDPEnable, true )));
@@ -1366,6 +1384,14 @@ void CPreferences::LoadAllItems(wxConfigBase* cfg)
 		s_byCryptTCPPaddingLength = GetRandomUint8() % 254;
 	}
 	SetSlotAllocation(s_slotallocation);
+
+	SetStartHourAltRate(s_startHourAltRate);
+	SetStartMinuteAltRate(s_startMinuteAltRate);
+	SetEndHourAltRate(s_endHourAltRate);
+	SetEndMinuteAltRate(s_endMinuteAltRate);
+	SetMaxUploadAltRate(s_maxUploadAltRate);
+	SetMaxDownloadAltRate(s_maxDownloadAltRate);
+	SetSlotAllocationAltRate(s_slotAllocationAltRate);
 #endif
 }
 
