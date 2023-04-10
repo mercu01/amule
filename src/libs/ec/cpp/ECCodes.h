@@ -340,7 +340,7 @@ enum ECTagNames {
 			EC_TAG_CONN_MAX_UL_ALT_RATE				  = 0x1314,
 			EC_TAG_CONN_MAX_DL_ALT_RATE				  = 0x1315,
 			EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE	  = 0x1316,
-			EC_TAG_PREFS_MESSAGEFILTER            = 0x1400;
+		EC_TAG_PREFS_MESSAGEFILTER                = 0x1400;
 			EC_TAG_MSGFILTER_ENABLED                  = 0x1401,
 			EC_TAG_MSGFILTER_ALL                      = 0x1402,
 			EC_TAG_MSGFILTER_FRIENDS                  = 0x1403,

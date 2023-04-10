@@ -182,14 +182,14 @@ function init_data()
 		"slot_alloc", "max_conn_total",
 		"tcp_port", "udp_port",
 		"min_free_space",
-		"autorefresh_time",		
-    "EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS",
-		"EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS"
+		"autorefresh_time",
+    "EC_TAG_CONN_START_HOUR_ALT_RATE",
+		"EC_TAG_CONN_START_MINUTE_ALT_RATE",
+		"EC_TAG_CONN_END_HOUR_ALT_RATE",
+		"EC_TAG_CONN_END_MINUTE_ALT_RATE",
+		"EC_TAG_CONN_MAX_UL_ALT_RATE",
+		"EC_TAG_CONN_MAX_DL_ALT_RATE",
+		"EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE"
 		)
 	for(i = 0; i < str_param_names.length; i++) {
 		frm[str_param_names[i]].value = initvals[str_param_names[i]];
