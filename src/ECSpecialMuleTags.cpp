@@ -108,14 +108,6 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL, thePrefs::GetMaxUpload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL, thePrefs::GetMaxDownload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION, thePrefs::GetSlotAllocation()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartHourAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartMinuteAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndHourAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndMinuteAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxUploadAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxDownloadAlternativeRateLimits()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS, thePrefs::GetSlotAllocationAlternativeRateLimits()));
-
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_TCP_PORT, thePrefs::GetPort()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_UDP_PORT, thePrefs::GetUDPPort()));
 		if (thePrefs::IsUDPDisabled()) {
@@ -135,6 +127,13 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		if (thePrefs::GetNetworkKademlia()) {
 			connPrefs.AddTag(CECEmptyTag(EC_TAG_NETWORK_KADEMLIA));
 		}
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartHourAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartMinuteAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndHourAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndMinuteAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxUploadAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxDownloadAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS, thePrefs::GetSlotAllocationAlternativeRateLimits()));
 		AddTag(connPrefs);
 	}
 
@@ -413,6 +412,23 @@ void CEC_Prefs_Packet::Apply() const
 			thePrefs::SetSlotAllocation(oneTag->GetInt());
 		}
 
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_TCP_PORT)) != NULL) {
+			thePrefs::SetPort(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_UDP_PORT)) != NULL) {
+			thePrefs::SetUDPPort(oneTag->GetInt());
+		}
+		ApplyBoolean(use_tag, thisTab, thePrefs::SetUDPDisable, EC_TAG_CONN_UDP_DISABLE);
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_FILE_SOURCES)) != NULL) {
+			thePrefs::SetMaxSourcesPerFile(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_CONN)) != NULL) {
+			thePrefs::SetMaxConnections(oneTag->GetInt());
+		}
+		ApplyBoolean(use_tag, thisTab, thePrefs::SetAutoConnect, EC_TAG_CONN_AUTOCONNECT);
+		ApplyBoolean(use_tag, thisTab, thePrefs::SetReconnect, EC_TAG_CONN_RECONNECT);
+		ApplyBoolean(use_tag, thisTab, thePrefs::SetNetworkED2K, EC_TAG_NETWORK_ED2K);
+		ApplyBoolean(use_tag, thisTab, thePrefs::SetNetworkKademlia, EC_TAG_NETWORK_KADEMLIA);
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS)) != NULL) {
 			thePrefs::SetStartHourAlternativeRateLimits(oneTag->GetInt());
 		}
@@ -434,24 +450,6 @@ void CEC_Prefs_Packet::Apply() const
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS)) != NULL) {
 			thePrefs::SetSlotAllocationAlternativeRateLimits(oneTag->GetInt());
 		}
-		
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_TCP_PORT)) != NULL) {
-			thePrefs::SetPort(oneTag->GetInt());
-		}
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_UDP_PORT)) != NULL) {
-			thePrefs::SetUDPPort(oneTag->GetInt());
-		}
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetUDPDisable, EC_TAG_CONN_UDP_DISABLE);
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_FILE_SOURCES)) != NULL) {
-			thePrefs::SetMaxSourcesPerFile(oneTag->GetInt());
-		}
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_CONN)) != NULL) {
-			thePrefs::SetMaxConnections(oneTag->GetInt());
-		}
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetAutoConnect, EC_TAG_CONN_AUTOCONNECT);
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetReconnect, EC_TAG_CONN_RECONNECT);
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetNetworkED2K, EC_TAG_NETWORK_ED2K);
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetNetworkKademlia, EC_TAG_NETWORK_KADEMLIA);
 	}
 
 	if ((thisTab = GetTagByName(EC_TAG_PREFS_MESSAGEFILTER)) != NULL) {
