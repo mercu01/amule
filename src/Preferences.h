@@ -31,13 +31,14 @@
 #include <wx/arrstr.h>			// Needed for wxArrayString
 
 #include <map>
-#include <chrono>
 
 #include "Proxy.h"
 #include "OtherStructs.h"
 
 #include <common/ClientVersion.h>	// Needed for __SVN__
 
+#include <chrono> //Need for calculate alternative range
+#include "Logger.h" //Need for log alternative range
 
 class CPreferences;
 class wxConfigBase;
@@ -242,7 +243,12 @@ public:
         int endTotalMinutes = endHour * 60 + endMinute;
 		AddLogLineCS(CFormat(wxT("startHour: %s - startMinute: %s - endHour: %s - endMinute: %s")) % startHour  % startMinute % endHour % endMinute);
 		AddLogLineCS(CFormat(wxT("useAlternativeRanges %s - currentHour: %s - currentMinute: %s - startTotalMinutes: %s - endTotalMinutes: %s")) % ((currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes)) % currentHour % currentMinute % startTotalMinutes % endTotalMinutes);
-        return (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
+        bool rtn = (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
+		if (s_lastValueAltRate != rtn){
+			s_lastValueAltRate = rtn;
+			AddLogLineCS(CFormat(wxT("Use Alternative Ranges: %s")) % rtn);
+		}
+		return rtn;
     }
 	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
 	static uint16		GetStartMinuteAltRate()		{ return s_startMinuteAltRate; }
@@ -669,7 +675,7 @@ protected:
 	static uint16	s_maxUploadAltRate;
 	static uint16	s_maxDownloadAltRate;
 	static uint16	s_slotAllocationAltRate;
-
+	static bool		s_lastValueAltRate;
 ////////////// PROXY
 	static CProxyData s_ProxyData;
 
