@@ -123,7 +123,14 @@ var initvals = new Object;
 		);
 		$conn_opts = array("max_line_up_cap","max_up_limit",
 			"max_line_down_cap","max_down_limit", "slot_alloc", 
-			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en");
+			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en", 
+      "EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS",
+      "EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS");
 		$webserver_opts = array("use_gzip", "autorefresh_time");
 		
 		$all_opts;
@@ -175,7 +182,14 @@ function init_data()
 		"slot_alloc", "max_conn_total",
 		"tcp_port", "udp_port",
 		"min_free_space",
-		"autorefresh_time"
+		"autorefresh_time",		
+    "EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS",
+		"EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS"
 		)
 	for(i = 0; i < str_param_names.length; i++) {
 		frm[str_param_names[i]].value = initvals[str_param_names[i]];
@@ -294,6 +308,48 @@ function init_data()
             <td height="25">Slot allocation </td>
             <td width="63" height="25">
 <input name="slot_alloc" type="text" id="slot_alloc6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - START HOUR</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - START MINUTE</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - END HOUR</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - END MINUTE</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS" id="EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - Max upload rate </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - Max download rate </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Slot allocation </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS6" size="4"></td>
           </tr>
         </table></td>
       <td width="50%" rowspan="3"> 

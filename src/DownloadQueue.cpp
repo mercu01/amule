@@ -417,10 +417,13 @@ void CDownloadQueue::Process()
 
 	{
 		wxMutexLocker lock(m_mutex);
-
+		uint32 prefDownspeed=  (uint32)thePrefs::GetMaxDownload();
+		if (thePrefs::useAlternativeRanges()) {
+			prefDownspeed = thePrefs::GetMaxDownloadAlternativeRateLimits();
+		}
 		uint32 downspeed = 0;
-		if (thePrefs::GetMaxDownload() != UNLIMITED && m_datarate > 1500) {
-			downspeed = (((uint32)thePrefs::GetMaxDownload())*1024*100)/(m_datarate+1);
+		if (prefDownspeed != UNLIMITED && m_datarate > 1500) {
+			downspeed = (prefDownspeed*1024*100)/(m_datarate+1);
 			if (downspeed < 50) {
 				downspeed = 50;
 			} else if (downspeed > 200) {

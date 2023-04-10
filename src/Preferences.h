@@ -37,6 +37,8 @@
 
 #include <common/ClientVersion.h>	// Needed for __SVN__
 
+#include <chrono>
+
 class CPreferences;
 class wxConfigBase;
 class wxWindow;
@@ -226,6 +228,28 @@ public:
 	static void		SetUserHash(const CMD4Hash& h)	{ s_userhash = h; }
 	static uint16		GetMaxUpload()			{ return s_maxupload; }
 	static uint16		GetSlotAllocation()		{ return s_slotallocation; }
+
+  	static bool useAlternativeRanges () {
+		int startHour = s_startHourAlternativeRateLimits;
+		int startMinute = s_startMinuteAlternativeRateLimits;
+		int endHour = s_endHourAlternativeRateLimits;
+		int endMinute = s_endMinuteAlternativeRateLimits;
+        auto now = std::chrono::system_clock::now();
+        auto now_mins = std::chrono::time_point_cast<std::chrono::minutes>(now);
+        int currentHour = now_mins.time_since_epoch().count() / 60;
+        int currentMinute = now_mins.time_since_epoch().count() % 60;
+        int startTotalMinutes = startHour * 60 + startMinute;
+        int endTotalMinutes = endHour * 60 + endMinute;
+        return (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
+    }
+	static uint16		GetStartHourAlternativeRateLimits()			{ return s_startHourAlternativeRateLimits; }
+	static uint16		GetStartMinuteAlternativeRateLimits()		{ return s_startMinuteAlternativeRateLimits; }
+	static uint16		GetEndHourAlternativeRateLimits()			{ return s_endHourAlternativeRateLimits; }
+	static uint16		GetEndMinuteAlternativeRateLimits()			{ return s_endMinuteAlternativeRateLimits; }
+	static uint16		GetMaxUploadAlternativeRateLimits()			{ return s_maxUploadAlternativeRateLimits; }
+	static uint16		GetMaxDownloadAlternativeRateLimits()		{ return s_maxDownloadAlternativeRateLimits; }
+	static uint16		GetSlotAllocationAlternativeRateLimits()	{ return s_slotAllocationAlternativeRateLimits; }
+	
 	static bool		IsICHEnabled()			{ return s_ICH; }
 	static void		SetICHEnabled(bool val)		{ s_ICH = val; }
 	static bool		IsTrustingEveryHash()		{ return s_AICHTrustEveryHash; }
@@ -348,6 +372,14 @@ public:
 	static void		SetMaxUpload(uint16 in);
 	static void		SetMaxDownload(uint16 in);
 	static void		SetSlotAllocation(uint16 in)	{ s_slotallocation = (in >= 1) ? in : 1; };
+	
+	static void		SetStartHourAlternativeRateLimits(uint16 in)		{ s_startHourAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetStartMinuteAlternativeRateLimits(uint16 in)		{ s_startMinuteAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetEndHourAlternativeRateLimits(uint16 in)			{ s_endHourAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetEndMinuteAlternativeRateLimits(uint16 in)		{ s_endMinuteAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetMaxUploadAlternativeRateLimits(uint16 in)		{ s_maxUploadAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetMaxDownloadAlternativeRateLimits(uint16 in)		{ s_maxDownloadAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetSlotAllocationAlternativeRateLimits(uint16 in)	{ s_slotAllocationAlternativeRateLimits = (in >= 1) ? in : 0; };
 
 	typedef std::vector<CPath> PathList;
 	PathList shareddir_list;
@@ -627,6 +659,14 @@ protected:
 	static bool	s_UPnPECEnabled;
 	static bool	s_UPnPWebServerEnabled;
 	static uint16	s_UPnPTCPPort;
+
+	static uint16	s_startHourAlternativeRateLimits;
+	static uint16	s_startMinuteAlternativeRateLimits;
+	static uint16	s_endHourAlternativeRateLimits;
+	static uint16	s_endMinuteAlternativeRateLimits;
+	static uint16	s_maxUploadAlternativeRateLimits;
+	static uint16	s_maxDownloadAlternativeRateLimits;
+	static uint16	s_slotAllocationAlternativeRateLimits;
 
 ////////////// PROXY
 	static CProxyData s_ProxyData;

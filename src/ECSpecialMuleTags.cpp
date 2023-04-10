@@ -108,6 +108,14 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL, thePrefs::GetMaxUpload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL, thePrefs::GetMaxDownload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION, thePrefs::GetSlotAllocation()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartHourAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetStartMinuteAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndHourAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS, thePrefs::GetEndMinuteAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxUploadAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS, thePrefs::GetMaxDownloadAlternativeRateLimits()));
+		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS, thePrefs::GetSlotAllocationAlternativeRateLimits()));
+
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_TCP_PORT, thePrefs::GetPort()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_UDP_PORT, thePrefs::GetUDPPort()));
 		if (thePrefs::IsUDPDisabled()) {
@@ -404,6 +412,29 @@ void CEC_Prefs_Packet::Apply() const
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_SLOT_ALLOCATION)) != NULL) {
 			thePrefs::SetSlotAllocation(oneTag->GetInt());
 		}
+
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_START_HOUR_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetStartHourAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_START_MINUTE_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetStartMinuteAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_END_HOUR_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetEndHourAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_END_MINUTE_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetEndMinuteAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_UL_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetMaxUploadAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_DL_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetMaxDownloadAlternativeRateLimits(oneTag->GetInt());
+		}
+		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_SLOT_ALLOCATION_ALTERNATIVE_RATE_LIMITS)) != NULL) {
+			thePrefs::SetSlotAllocationAlternativeRateLimits(oneTag->GetInt());
+		}
+		
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_TCP_PORT)) != NULL) {
 			thePrefs::SetPort(oneTag->GetInt());
 		}
