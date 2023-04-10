@@ -388,45 +388,46 @@ function init_data()
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - START HOUR</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            <td height="25">Start hh:mm</td>
+            <td width="98" height="2">
+            <input style="width: 36px;" name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            :
+            <input style="width: 36px;" name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - START MINUTE</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+            <td height="25">End hh:mm</td>
+            <td width="98" height="2">
+            <input style="width: 36px;" name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            :
+            <input style="width: 36px;" name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - END HOUR</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - END MINUTE</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+            <td height="25"> Max download rate </td>
+            <td width="63" height="25">
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</t>
-            <td height="25">Alternative Rate limit - Max upload rate </td>
+            <td height="25">Max upload rate </td>
             <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
           </tr>
           <tr> 
             <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - Max download rate </td>
+            <td height="25">Slot allocation </td>
             <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - Slot allocation </td>
-            <td width="63" height="25">
-            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
           </tr>
         </table></td>
     </tr>
