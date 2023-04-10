@@ -231,13 +231,13 @@ public:
   	static bool useAlternativeRanges () {
         return false;
     }
-	static uint16		GetStartHourAlternativeRateLimits()			{ return s_startHourAlternativeRateLimits; }
-	static uint16		GetStartMinuteAlternativeRateLimits()		{ return s_startMinuteAlternativeRateLimits; }
-	static uint16		GetEndHourAlternativeRateLimits()			{ return s_endHourAlternativeRateLimits; }
-	static uint16		GetEndMinuteAlternativeRateLimits()			{ return s_endMinuteAlternativeRateLimits; }
-	static uint16		GetMaxUploadAlternativeRateLimits()			{ return s_maxUploadAlternativeRateLimits; }
-	static uint16		GetMaxDownloadAlternativeRateLimits()		{ return s_maxDownloadAlternativeRateLimits; }
-	static uint16		GetSlotAllocationAlternativeRateLimits()	{ return s_slotAllocationAlternativeRateLimits; }
+	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
+	static uint16		GetStartMinuteAltRate()		{ return s_startMinuteAltRate; }
+	static uint16		GetEndHourAltRate()			{ return s_endHourAltRate; }
+	static uint16		GetEndMinuteAltRate()			{ return s_endMinuteAltRate; }
+	static uint16		GetMaxUploadAltRate()			{ return s_maxUploadAltRate; }
+	static uint16		GetMaxDownloadAltRate()		{ return s_maxDownloadAltRate; }
+	static uint16		GetSlotAllocationAltRate()	{ return s_slotAllocationAltRate; }
 	
 	static bool		IsICHEnabled()			{ return s_ICH; }
 	static void		SetICHEnabled(bool val)		{ s_ICH = val; }
@@ -362,13 +362,13 @@ public:
 	static void		SetMaxDownload(uint16 in);
 	static void		SetSlotAllocation(uint16 in)	{ s_slotallocation = (in >= 1) ? in : 1; };
 	
-	static void		SetStartHourAlternativeRateLimits(uint16 in)		{ s_startHourAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetStartMinuteAlternativeRateLimits(uint16 in)		{ s_startMinuteAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetEndHourAlternativeRateLimits(uint16 in)			{ s_endHourAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetEndMinuteAlternativeRateLimits(uint16 in)		{ s_endMinuteAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetMaxUploadAlternativeRateLimits(uint16 in)		{ s_maxUploadAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetMaxDownloadAlternativeRateLimits(uint16 in)		{ s_maxDownloadAlternativeRateLimits = (in >= 1) ? in : 0; };
-	static void		SetSlotAllocationAlternativeRateLimits(uint16 in)	{ s_slotAllocationAlternativeRateLimits = (in >= 1) ? in : 0; };
+	static void		SetStartHourAltRate(uint16 in)		{ s_startHourAltRate = (in >= 1) ? in : 0; };
+	static void		SetStartMinuteAltRate(uint16 in)		{ s_startMinuteAltRate = (in >= 1) ? in : 0; };
+	static void		SetEndHourAltRate(uint16 in)			{ s_endHourAltRate = (in >= 1) ? in : 0; };
+	static void		SetEndMinuteAltRate(uint16 in)		{ s_endMinuteAltRate = (in >= 1) ? in : 0; };
+	static void		SetMaxUploadAltRate(uint16 in)		{ s_maxUploadAltRate = (in >= 1) ? in : 0; };
+	static void		SetMaxDownloadAltRate(uint16 in)		{ s_maxDownloadAltRate = (in >= 1) ? in : 0; };
+	static void		SetSlotAllocationAltRate(uint16 in)	{ s_slotAllocationAltRate = (in >= 1) ? in : 0; };
 
 	typedef std::vector<CPath> PathList;
 	PathList shareddir_list;
@@ -649,13 +649,13 @@ protected:
 	static bool	s_UPnPWebServerEnabled;
 	static uint16	s_UPnPTCPPort;
 
-	static uint16	s_startHourAlternativeRateLimits;
-	static uint16	s_startMinuteAlternativeRateLimits;
-	static uint16	s_endHourAlternativeRateLimits;
-	static uint16	s_endMinuteAlternativeRateLimits;
-	static uint16	s_maxUploadAlternativeRateLimits;
-	static uint16	s_maxDownloadAlternativeRateLimits;
-	static uint16	s_slotAllocationAlternativeRateLimits;
+	static uint16	s_startHourAltRate;
+	static uint16	s_startMinuteAltRate;
+	static uint16	s_endHourAltRate;
+	static uint16	s_endMinuteAltRate;
+	static uint16	s_maxUploadAltRate;
+	static uint16	s_maxDownloadAltRate;
+	static uint16	s_slotAllocationAltRate;
 
 ////////////// PROXY
 	static CProxyData s_ProxyData;

@@ -291,11 +291,11 @@ void* UploadBandwidthThrottler::Entry()
 		uint32 timeSinceLastLoop = GetTickCountFullRes() - lastLoopTick;
 		// Calculate data rate
 		if (thePrefs::useAlternativeRanges()) {
-			if (thePrefs::GetMaxUploadAlternativeRateLimits() == UNLIMITED) {
+			if (thePrefs::GetMaxUploadAltRate() == UNLIMITED) {
 			// 1Slot = 1mb's
 				allowedDataRate = (slotsAllowed + 1) * 1000000;
 			} else {
-				allowedDataRate = thePrefs::GetMaxUploadAlternativeRateLimits() * 1024;
+				allowedDataRate = thePrefs::GetMaxUploadAltRate() * 1024;
 			}
 		}else {
 			if (thePrefs::GetMaxUpload() == UNLIMITED) {
