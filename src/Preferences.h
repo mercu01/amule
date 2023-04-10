@@ -246,7 +246,6 @@ public:
         auto start = midnight + std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
         auto end = midnight + std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
 		bool rtn = (now >= start) && (now <= end);
-		AddLogLineCS(CFormat(wxT("useAlternativeRanges: %s - start: %s - end: %s - now: %s ")) % rtn % start % end % now);
 		if (s_lastValueAltRate != rtn) {
 			s_lastValueAltRate = rtn;
 			if (rtn) {
