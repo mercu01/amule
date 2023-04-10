@@ -308,48 +308,6 @@ function init_data()
             <td width="63" height="25">
 <input name="slot_alloc" type="text" id="slot_alloc6" size="4"></td>
           </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - START HOUR</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - START MINUTE</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - END HOUR</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - END MINUTE</td>
-            <td width="63" height="2">
-            <input name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</t>
-            <td height="25">Alternative Rate limit - Max upload rate </td>
-            <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Alternative Rate limit - Max download rate </td>
-            <td width="63" height="25">
-            <input name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
-          </tr>
-          <tr> 
-            <td width="22" height="25">&nbsp;</td>
-            <td height="25">Slot allocation </td>
-            <td width="63" height="25">
-            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
-          </tr>
         </table></td>
       <td width="50%" rowspan="3"> 
         <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
@@ -417,6 +375,58 @@ function init_data()
               <input name="extract_metadata" type="checkbox" id="extract_metadata4"></td>
             <td height="25"> Extract metadata tags </td>
             <td width="63" height="25"></td>
+          </tr>
+        </table></td>
+    </tr>
+    <tr align="center" valign="top"> 
+      <td> 
+        <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
+          <tr> 
+            <td width="22" height="19">&nbsp;</td>
+            <th>Alternative Rate limit</th>
+            <td width="63">&nbsp;</td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - START HOUR</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - START MINUTE</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - END HOUR</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - END MINUTE</td>
+            <td width="63" height="2">
+            <input name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</t>
+            <td height="25">Alternative Rate limit - Max upload rate </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - Max download rate </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Alternative Rate limit - Slot allocation </td>
+            <td width="63" height="25">
+            <input name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
           </tr>
         </table></td>
     </tr>
