@@ -37,7 +37,6 @@
 
 #include <common/ClientVersion.h>	// Needed for __SVN__
 
-#include <chrono>
 
 class CPreferences;
 class wxConfigBase;
@@ -230,17 +229,7 @@ public:
 	static uint16		GetSlotAllocation()		{ return s_slotallocation; }
 
   	static bool useAlternativeRanges () {
-		int startHour = s_startHourAlternativeRateLimits;
-		int startMinute = s_startMinuteAlternativeRateLimits;
-		int endHour = s_endHourAlternativeRateLimits;
-		int endMinute = s_endMinuteAlternativeRateLimits;
-        auto now = std::chrono::system_clock::now();
-        auto now_mins = std::chrono::time_point_cast<std::chrono::minutes>(now);
-        int currentHour = now_mins.time_since_epoch().count() / 60;
-        int currentMinute = now_mins.time_since_epoch().count() % 60;
-        int startTotalMinutes = startHour * 60 + startMinute;
-        int endTotalMinutes = endHour * 60 + endMinute;
-        return (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
+        return false;
     }
 	static uint16		GetStartHourAlternativeRateLimits()			{ return s_startHourAlternativeRateLimits; }
 	static uint16		GetStartMinuteAlternativeRateLimits()		{ return s_startMinuteAlternativeRateLimits; }
