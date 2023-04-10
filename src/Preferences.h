@@ -235,15 +235,12 @@ public:
 		int startMinute = s_startMinuteAltRate;
 		int endHour = s_endHourAltRate;
 		int endMinute = s_endMinuteAltRate;
-        auto now = std::chrono::system_clock::now();
-        auto now_mins = std::chrono::time_point_cast<std::chrono::minutes>(now);
-        int currentHour = now_mins.time_since_epoch().count() / 60;
-        int currentMinute = now_mins.time_since_epoch().count() % 60;
-        int startTotalMinutes = startHour * 60 + startMinute;
-        int endTotalMinutes = endHour * 60 + endMinute;
-		AddLogLineCS(CFormat(wxT("startHour: %s - startMinute: %s - endHour: %s - endMinute: %s")) % startHour  % startMinute % endHour % endMinute);
-		AddLogLineCS(CFormat(wxT("useAlternativeRanges %s - currentHour: %s - currentMinute: %s - startTotalMinutes: %s - endTotalMinutes: %s")) % ((currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes)) % currentHour % currentMinute % startTotalMinutes % endTotalMinutes);
-        bool rtn = (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
+     	auto now = std::chrono::system_clock::now();
+		auto now_mins = std::chrono::duration_cast<std::chrono::minutes>(now.time_since_epoch());
+		std::chrono::minutes startTotalMinutes = std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
+		std::chrono::minutes endTotalMinutes = std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
+		bool rtn = (now_mins >= startTotalMinutes) && (now_mins <= endTotalMinutes); 
+		AddLogLineCS(CFormat(wxT("useAlternativeRanges: %s - startTotalMinutes: %s - endTotalMinutes: %s - now_mins: %s ")) % rtn % startTotalMinutes % endTotalMinutes % now_mins);
 		if (s_lastValueAltRate != rtn) {
 			s_lastValueAltRate = rtn;
 			if (rtn) {
