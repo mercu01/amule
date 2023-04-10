@@ -37,6 +37,9 @@
 
 #include <common/ClientVersion.h>	// Needed for __SVN__
 
+#include <chrono> //Need for calculate alternative range
+#include "Logger.h" //Need for log alternative range
+
 class CPreferences;
 class wxConfigBase;
 class wxWindow;
@@ -226,6 +229,41 @@ public:
 	static void		SetUserHash(const CMD4Hash& h)	{ s_userhash = h; }
 	static uint16		GetMaxUpload()			{ return s_maxupload; }
 	static uint16		GetSlotAllocation()		{ return s_slotallocation; }
+
+  	static bool useAlternativeRanges () {
+		int startHour = s_startHourAltRate;
+		int startMinute = s_startMinuteAltRate;
+		int endHour = s_endHourAltRate;
+		int endMinute = s_endMinuteAltRate;
+     	
+		auto now = std::chrono::system_clock::now();
+        auto time_now = std::chrono::system_clock::to_time_t(now);
+        tm tm_now = *std::localtime(&time_now);
+        tm_now.tm_hour = 0;
+        tm_now.tm_min = 0;
+        tm_now.tm_sec = 0;
+        auto midnight = std::chrono::system_clock::from_time_t(std::mktime(&tm_now));
+        auto start = midnight + std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
+        auto end = midnight + std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
+		bool rtn = (now >= start) && (now <= end);
+		if (s_lastValueAltRate != rtn) {
+			s_lastValueAltRate = rtn;
+			if (rtn) {
+				AddLogLineCS(CFormat(wxT("Enabled Alternative Ranges")));
+			}else{
+				AddLogLineCS(CFormat(wxT("Disabled Alternative Ranges")));
+			}
+		}
+		return rtn;
+    }
+	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
+	static uint16		GetStartMinuteAltRate()		{ return s_startMinuteAltRate; }
+	static uint16		GetEndHourAltRate()			{ return s_endHourAltRate; }
+	static uint16		GetEndMinuteAltRate()			{ return s_endMinuteAltRate; }
+	static uint16		GetMaxUploadAltRate()			{ return s_maxUploadAltRate; }
+	static uint16		GetMaxDownloadAltRate()		{ return s_maxDownloadAltRate; }
+	static uint16		GetSlotAllocationAltRate()	{ return s_slotAllocationAltRate; }
+	
 	static bool		IsICHEnabled()			{ return s_ICH; }
 	static void		SetICHEnabled(bool val)		{ s_ICH = val; }
 	static bool		IsTrustingEveryHash()		{ return s_AICHTrustEveryHash; }
@@ -348,6 +386,14 @@ public:
 	static void		SetMaxUpload(uint16 in);
 	static void		SetMaxDownload(uint16 in);
 	static void		SetSlotAllocation(uint16 in)	{ s_slotallocation = (in >= 1) ? in : 1; };
+	
+	static void		SetStartHourAltRate(uint16 in)		{ s_startHourAltRate = (in >= 1) ? in : 0; };
+	static void		SetStartMinuteAltRate(uint16 in)		{ s_startMinuteAltRate = (in >= 1) ? in : 0; };
+	static void		SetEndHourAltRate(uint16 in)			{ s_endHourAltRate = (in >= 1) ? in : 0; };
+	static void		SetEndMinuteAltRate(uint16 in)		{ s_endMinuteAltRate = (in >= 1) ? in : 0; };
+	static void		SetMaxUploadAltRate(uint16 in)		{ s_maxUploadAltRate = (in >= 1) ? in : 0; };
+	static void		SetMaxDownloadAltRate(uint16 in)		{ s_maxDownloadAltRate = (in >= 1) ? in : 0; };
+	static void		SetSlotAllocationAltRate(uint16 in)	{ s_slotAllocationAltRate = (in >= 1) ? in : 0; };
 
 	typedef std::vector<CPath> PathList;
 	PathList shareddir_list;
@@ -628,6 +674,14 @@ protected:
 	static bool	s_UPnPWebServerEnabled;
 	static uint16	s_UPnPTCPPort;
 
+	static uint16	s_startHourAltRate;
+	static uint16	s_startMinuteAltRate;
+	static uint16	s_endHourAltRate;
+	static uint16	s_endMinuteAltRate;
+	static uint16	s_maxUploadAltRate;
+	static uint16	s_maxDownloadAltRate;
+	static uint16	s_slotAllocationAltRate;
+	static bool		s_lastValueAltRate;
 ////////////// PROXY
 	static CProxyData s_ProxyData;
 
