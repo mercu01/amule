@@ -240,6 +240,8 @@ public:
         int currentMinute = now_mins.time_since_epoch().count() % 60;
         int startTotalMinutes = startHour * 60 + startMinute;
         int endTotalMinutes = endHour * 60 + endMinute;
+		AddLogLineCS(CFormat(wxT("startHour: %s - startMinute: %s - endHour: %s - endMinute: %s")) % startHour  % startMinute % endHour % endMinute);
+		AddLogLineCS(CFormat(wxT("useAlternativeRanges %s - currentHour: %s - currentMinute: %s - startTotalMinutes: %s - endTotalMinutes: %s")) % ((currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes)) % currentHour % currentMinute % startTotalMinutes % endTotalMinutes);
         return (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
     }
 	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
