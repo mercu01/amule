@@ -244,9 +244,13 @@ public:
 		AddLogLineCS(CFormat(wxT("startHour: %s - startMinute: %s - endHour: %s - endMinute: %s")) % startHour  % startMinute % endHour % endMinute);
 		AddLogLineCS(CFormat(wxT("useAlternativeRanges %s - currentHour: %s - currentMinute: %s - startTotalMinutes: %s - endTotalMinutes: %s")) % ((currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes)) % currentHour % currentMinute % startTotalMinutes % endTotalMinutes);
         bool rtn = (currentHour >= startTotalMinutes) && (currentHour <= endTotalMinutes);
-		if (s_lastValueAltRate != rtn){
+		if (s_lastValueAltRate != rtn) {
 			s_lastValueAltRate = rtn;
-			AddLogLineCS(CFormat(wxT("Use Alternative Ranges: %s")) % rtn);
+			if (rtn) {
+				AddLogLineCS(CFormat(wxT("Enabled Alternative Ranges")));
+			}else{
+				AddLogLineCS(CFormat(wxT("Disabled Alternative Ranges")));
+			}
 		}
 		return rtn;
     }

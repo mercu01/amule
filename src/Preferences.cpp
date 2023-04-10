@@ -96,6 +96,7 @@ uint16		CPreferences::s_endMinuteAltRate;
 uint16		CPreferences::s_maxUploadAltRate;
 uint16		CPreferences::s_maxDownloadAltRate;
 uint16		CPreferences::s_slotAllocationAltRate;
+bool		CPreferences::s_lastValueAltRate;
 
 wxString	CPreferences::s_Addr;
 uint16		CPreferences::s_port;
