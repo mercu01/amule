@@ -123,8 +123,14 @@ var initvals = new Object;
 		);
 		$conn_opts = array("max_line_up_cap","max_up_limit",
 			"max_line_down_cap","max_down_limit", "slot_alloc", 
-			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en");
-		$webserver_opts = array("use_gzip", "autorefresh_time");
+			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en", 
+      "EC_TAG_CONN_START_HOUR_ALT_RATE",
+      "EC_TAG_CONN_START_MINUTE_ALT_RATE",
+      "EC_TAG_CONN_END_HOUR_ALT_RATE",
+      "EC_TAG_CONN_END_MINUTE_ALT_RATE",
+      "EC_TAG_CONN_MAX_UL_ALT_RATE",
+      "EC_TAG_CONN_MAX_DL_ALT_RATE",
+      "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE");
 		
 		$all_opts;
 		foreach ($conn_opts as $i) {
@@ -175,7 +181,14 @@ function init_data()
 		"slot_alloc", "max_conn_total",
 		"tcp_port", "udp_port",
 		"min_free_space",
-		"autorefresh_time"
+		"autorefresh_time",
+    "EC_TAG_CONN_START_HOUR_ALT_RATE",
+    "EC_TAG_CONN_START_MINUTE_ALT_RATE",
+    "EC_TAG_CONN_END_HOUR_ALT_RATE",
+    "EC_TAG_CONN_END_MINUTE_ALT_RATE",
+    "EC_TAG_CONN_MAX_UL_ALT_RATE",
+    "EC_TAG_CONN_MAX_DL_ALT_RATE",
+    "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE"
 		)
 	for(i = 0; i < str_param_names.length; i++) {
 		frm[str_param_names[i]].value = initvals[str_param_names[i]];
@@ -362,6 +375,59 @@ function init_data()
               <input name="extract_metadata" type="checkbox" id="extract_metadata4"></td>
             <td height="25"> Extract metadata tags </td>
             <td width="63" height="25"></td>
+          </tr>
+        </table></td>
+    </tr>
+    <tr align="center" valign="top"> 
+      <td> 
+        <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
+          <tr> 
+            <td width="22" height="19">&nbsp;</td>
+            <th>Alternative Rate limit</th>
+            <td width="63">&nbsp;</td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Start hh:mm</td>
+            <td width="98" height="2">
+            <input style="width: 36px;" name="EC_TAG_CONN_START_HOUR_ALT_RATE" id="EC_TAG_CONN_START_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            :
+            <input style="width: 36px;" name="EC_TAG_CONN_START_MINUTE_ALT_RATE" id="EC_TAG_CONN_START_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">End hh:mm</td>
+            <td width="98" height="2">
+            <input style="width: 36px;" name="EC_TAG_CONN_END_HOUR_ALT_RATE" id="EC_TAG_CONN_END_HOUR_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="23" step="1" name="num">
+            :
+            <input style="width: 36px;" name="EC_TAG_CONN_END_MINUTE_ALT_RATE" id="EC_TAG_CONN_END_MINUTE_ALT_RATE6" type="number" pattern="^[0-9]"  min="0" max="59" step="1" name="num">
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25"> Max download rate </td>
+            <td width="63" height="25">
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_MAX_DL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_DL_ALT_RATE6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</t>
+            <td height="25">Max upload rate </td>
+            <td width="63" height="25">
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_MAX_UL_ALT_RATE" type="text" id="EC_TAG_CONN_MAX_UL_ALT_RATE6" size="4"></td>
+          </tr>
+          <tr> 
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Slot allocation </td>
+            <td width="63" height="25">
+            <input style="
+    float: right;
+    margin-right: 16px;
+" name="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE" type="text" id="EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE6" size="4"></td>
           </tr>
         </table></td>
     </tr>

@@ -297,6 +297,9 @@ void CUploadQueue::Process()
 uint16 CUploadQueue::GetMaxSlots() const
 {
 	uint16 nMaxSlots = thePrefs::GetSlotAllocation();
+	if (thePrefs::useAlternativeRanges()) {
+		nMaxSlots = thePrefs::GetSlotAllocationAltRate();
+	}
 	if (nMaxSlots < 5) {
 		nMaxSlots = 5;
 	}
@@ -305,7 +308,9 @@ uint16 CUploadQueue::GetMaxSlots() const
 uint16 CUploadQueue::GetMaxUpload() const
 {
 	uint16 nMaxUpload = thePrefs::GetMaxUpload();
-	
+	if (thePrefs::useAlternativeRanges()) {
+		nMaxUpload = thePrefs::GetMaxUploadAltRate();
+	}
 	return nMaxUpload;
 }
 
