@@ -231,30 +231,35 @@ public:
 	static uint16		GetSlotAllocation()		{ return s_slotallocation; }
 
   	static bool useAlternativeRanges () {
-		int startHour = s_startHourAltRate;
-		int startMinute = s_startMinuteAltRate;
-		int endHour = s_endHourAltRate;
-		int endMinute = s_endMinuteAltRate;
-     	
 		auto now = std::chrono::system_clock::now();
-        auto time_now = std::chrono::system_clock::to_time_t(now);
-        tm tm_now = *std::localtime(&time_now);
-        tm_now.tm_hour = 0;
-        tm_now.tm_min = 0;
-        tm_now.tm_sec = 0;
-        auto midnight = std::chrono::system_clock::from_time_t(std::mktime(&tm_now));
-        auto start = midnight + std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
-        auto end = midnight + std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
-		bool rtn = (now >= start) && (now <= end);
-		if (s_lastValueAltRate != rtn) {
-			s_lastValueAltRate = rtn;
-			if (rtn) {
-				AddLogLineCS(CFormat(wxT("Enabled Alternative Ranges")));
-			}else{
-				AddLogLineCS(CFormat(wxT("Disabled Alternative Ranges")));
+		//cache 1 min for best performance
+        if (now - s_lastCallTimeAltRate >= std::chrono::minutes(1)) {
+			s_lastCallTimeAltRate = now;
+
+			int startHour = s_startHourAltRate;
+			int startMinute = s_startMinuteAltRate;
+			int endHour = s_endHourAltRate;
+			int endMinute = s_endMinuteAltRate;
+			
+			auto time_now = std::chrono::system_clock::to_time_t(now);
+			tm tm_now = *std::localtime(&time_now);
+			tm_now.tm_hour = 0;
+			tm_now.tm_min = 0;
+			tm_now.tm_sec = 0;
+			auto midnight = std::chrono::system_clock::from_time_t(std::mktime(&tm_now));
+			auto start = midnight + std::chrono::hours(startHour) + std::chrono::minutes(startMinute);
+			auto end = midnight + std::chrono::hours(endHour) + std::chrono::minutes(endMinute);
+			bool rtn = (now >= start) && (now <= end);
+			if (s_lastValueAltRate != rtn) {
+				s_lastValueAltRate = rtn;
+				if (rtn) {
+					AddLogLineCS(CFormat(wxT("Enabled Alternative Ranges")));
+				}else{
+					AddLogLineCS(CFormat(wxT("Disabled Alternative Ranges")));
+				}
 			}
 		}
-		return rtn;
+		return s_lastValueAltRate;
     }
 	static uint16		GetStartHourAltRate()			{ return s_startHourAltRate; }
 	static uint16		GetStartMinuteAltRate()		{ return s_startMinuteAltRate; }
@@ -682,6 +687,7 @@ protected:
 	static uint16	s_maxDownloadAltRate;
 	static uint16	s_slotAllocationAltRate;
 	static bool		s_lastValueAltRate;
+	static std::chrono::time_point<std::chrono::system_clock> s_lastCallTimeAltRate;
 ////////////// PROXY
 	static CProxyData s_ProxyData;
 

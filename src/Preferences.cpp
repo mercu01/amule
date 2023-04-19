@@ -42,6 +42,7 @@
 
 #include "CFile.h"
 #include <common/MD5Sum.h>
+#include <chrono> 	//Need for calculate alternative range
 #include "Logger.h"
 #include <common/Format.h>			// Needed for CFormat
 #include <common/TextFile.h>			// Needed for CTextFile
@@ -97,6 +98,8 @@ uint16		CPreferences::s_maxUploadAltRate;
 uint16		CPreferences::s_maxDownloadAltRate;
 uint16		CPreferences::s_slotAllocationAltRate;
 bool		CPreferences::s_lastValueAltRate;
+std::chrono::time_point<std::chrono::system_clock> CPreferences::s_lastCallTimeAltRate = std::chrono::system_clock::now();;
+
 
 wxString	CPreferences::s_Addr;
 uint16		CPreferences::s_port;
