@@ -22,6 +22,8 @@ The upload slot algorithm is broken. Amule generates infinite upload slots, each
 Amule does not get credits, the download is penalized.
 
 ## Summary of changes
+### 2.3.3_broadband_RC4
+ - Feature: Alternative Rate Limits, [more info](#feature-alternative-rate-limits)
 ### 2.3.3_broadband_RC3
  - Feature: Advanced Upload Manager, [more info](#feature-advanced-upload-manager)
 ### 2.3.3_broadband_RC2
@@ -81,6 +83,11 @@ Example: 10 upload slots and >30 waiting in queue: kick slow clients, but more a
 - The slowest client is not very slow, at least 75% compared to the fastest client.
 - New clients, they can't be kicked. (It is considered a new client, when it takes less than 1 minute).
 - New clients is over 25% of the slots 
+
+## Feature: Alternative Rate Limits
+Schedule the use of alternative rate limits
+
+![image](https://user-images.githubusercontent.com/9451876/233133631-6d51708d-8000-4f5c-90c0-d35937fce93d.png)
 
 ## Inspired by
 - [itlezy/eMule](https://github.com/itlezy/eMule )
