@@ -139,7 +139,7 @@ END_EVENT_TABLE()
  * Creates an command-event for the given checkbox.
  *
  * This can be used enforce logical constraints by passing by
- * sending a check-box event for each checkbox, when transfering
+ * sending a check-box event for each checkbox, when transferring
  * to the UI. However, it should also be used for checkboxes that
  * have no side-effects other than enabling/disabling other
  * widgets in the preferences dialogs.
@@ -511,11 +511,6 @@ bool PrefsUnifiedDlg::TransferToWindow()
 	FindWindow(IDC_WEBUPNPTCPPORTTEXT)->Enable(thePrefs::GetUPnPWebServerEnabled());
 #endif
 
-#if !wxCHECK_VERSION(2,9,0)
-	CastChild(IDC_NOTIF, wxCheckBox)->SetValue(false);
-	FindWindow(IDC_NOTIF)->Enable(false);
-#endif
-
 #ifdef __DEBUG__
 	// Set debugging toggles
 	int count = theLogger.GetDebugCategoryCount();
@@ -865,7 +860,7 @@ void PrefsUnifiedDlg::OnCheckBoxChange(wxCommandEvent& event)
 			break;
 
 		case IDC_MSGFILTER:
-			// Toogle All filter options
+			// Toggle All filter options
 			FindWindow(IDC_MSGFILTER_ALL)->Enable(value);
 			FindWindow(IDC_MSGFILTER_NONSECURE)->Enable(value);
 			FindWindow(IDC_MSGFILTER_NONFRIENDS)->Enable(value);
@@ -879,7 +874,7 @@ void PrefsUnifiedDlg::OnCheckBoxChange(wxCommandEvent& event)
 			break;
 
 		case IDC_MSGFILTER_ALL:
-			// Toogle filtering by data.
+			// Toggle filtering by data.
 			FindWindow(IDC_MSGFILTER_NONSECURE)->Enable(!value);
 			FindWindow(IDC_MSGFILTER_NONFRIENDS)->Enable(!value);
 			FindWindow(IDC_MSGFILTER_WORD)->Enable(!value);
@@ -892,7 +887,7 @@ void PrefsUnifiedDlg::OnCheckBoxChange(wxCommandEvent& event)
 			break;
 
 		case IDC_MSGFILTER_WORD:
-			// Toogle filter word list.
+			// Toggle filter word list.
 			FindWindow(IDC_MSGWORD)->Enable(value);
 			break;
 

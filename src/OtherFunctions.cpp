@@ -138,7 +138,7 @@ FileType GetFiletype(const CPath& filename)
 }
 
 
-// Returns the (translated) description assosiated with a FileType
+// Returns the (translated) description associated with a FileType
 wxString GetFiletypeDesc(FileType type, bool translated)
 {
 	switch ( type ) {
@@ -201,7 +201,7 @@ wxString GetFiletypeDesc(FileType type, bool translated)
 	}
 }
 
-// Returns the Typename, examining the extention of the given filename
+// Returns the Typename, examining the extension of the given filename
 
 wxString GetFiletypeByName(const CPath& filename, bool translated)
 {
@@ -285,7 +285,7 @@ static wxChar base16Lookup[BASE16_LOOKUP_MAX][2] = {
 //
 // [In]
 //   buffer: Pointer to byte array
-//   bufLen: Lenght of buffer array
+//   bufLen: Length of buffer array
 //
 // [Return]
 //   wxString object with BASE16 encoded byte array
@@ -306,7 +306,7 @@ wxString EncodeBase16(const unsigned char* buffer, unsigned int bufLen)
 //
 // [In]
 //   base16Buffer: String containing BASE16
-//   base16BufLen: Lenght BASE16 coded string's length
+//   base16BufLen: Length BASE16 coded string's length
 //
 // [Out]
 //   buffer: byte array containing decoded string
@@ -335,7 +335,7 @@ unsigned int DecodeBase16(const wxString &base16Buffer, unsigned int base16BufLe
 //
 // [In]
 //   buffer: Pointer to byte array
-//   bufLen: Lenght of buffer array
+//   bufLen: Length of buffer array
 //
 // [Return]
 //   wxString object with BASE32 encoded byte array
@@ -373,7 +373,7 @@ wxString EncodeBase32(const unsigned char* buffer, unsigned int bufLen)
 //
 // [In]
 //   base32Buffer: String containing BASE32
-//   base32BufLen: Lenght BASE32 coded string's length
+//   base32BufLen: Length BASE32 coded string's length
 //
 // [Out]
 //   buffer: byte array containing decoded string
@@ -619,7 +619,7 @@ unsigned int DecodeBase64(const wxString &base64Buffer, unsigned int base64BufLe
 }
 
 
-// Returns the text assosiated with a category type
+// Returns the text associated with a category type
 wxString GetCatTitle(AllCategoryFilter cat)
 {
 	switch (cat) {
@@ -915,7 +915,7 @@ EED2KFileType GetED2KFileTypeID(const CPath& fileName)
 }
 
 
-// Retuns the ed2k file type term which is to be used in server searches
+// Returns the ed2k file type term which is to be used in server searches
 wxString GetED2KFileTypeSearchTerm(EED2KFileType iFileID)
 {
 	if (iFileID == ED2KFT_AUDIO)		return ED2KFTSTR_AUDIO;
@@ -931,7 +931,7 @@ wxString GetED2KFileTypeSearchTerm(EED2KFileType iFileID)
 }
 
 
-// Returns a file type which is used eMule internally only, examining the extention of the given filename
+// Returns a file type which is used eMule internally only, examining the extension of the given filename
 wxString GetFileTypeByName(const CPath& fileName)
 {
 	EED2KFileType iFileType = GetED2KFileTypeID(fileName);
@@ -948,7 +948,7 @@ wxString GetFileTypeByName(const CPath& fileName)
 }
 
 
-// Retuns the ed2k file type integer ID which is to be used for publishing+searching
+// Returns the ed2k file type integer ID which is to be used for publishing+searching
 EED2KFileType GetED2KFileTypeSearchID(EED2KFileType iFileID)
 {
 	switch (iFileID) {
@@ -1090,10 +1090,6 @@ wxString GetConfigDir(const wxString &configFileBase)
 void InitCustomLanguages()
 {
 	wxLanguageInfo info;
-
-#if !wxCHECK_VERSION(2, 9, 0)
-	CUSTOMLANGUAGE(wxLANGUAGE_ASTURIAN,	"ast",	0,	0,	wxLayout_LeftToRight,	"Asturian");
-#endif
 }
 
 
@@ -1103,12 +1099,6 @@ void InitLocale(wxLocale& locale, int language)
 
 #if defined(__WXMAC__) || defined(__WINDOWS__)
 	locale.AddCatalogLookupPathPrefix(JoinPaths(wxStandardPaths::Get().GetDataDir(), wxT("locale")));
-#else
-#if (wxCHECK_VERSION(2,9,5) && !wxCHECK_VERSION(3,0,3)) || (wxCHECK_VERSION(3,1,0) && !wxCHECK_VERSION(3,1,1))
-	// Add correct place to look for catalog files if we're using a wxWidgets version where it's broken
-	// See also http://trac.wxwidgets.org/ticket/17740
-	locale.AddCatalogLookupPathPrefix(JoinPaths(JoinPaths(wxStandardPaths::Get().GetInstallPrefix(), wxT("share")), wxT("locale")));
-#endif /* wxCHECK_VERSION(2,9,5)... */
 #endif /* (!)(defined(__WXMAC__) || defined(__WINDOWS__)) */
 
 	locale.AddCatalog(wxT(PACKAGE));

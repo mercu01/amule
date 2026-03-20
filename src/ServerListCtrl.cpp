@@ -172,7 +172,7 @@ void CServerListCtrl::RemoveAllServers(int state)
 
 void CServerListCtrl::RefreshServer( CServer* server )
 {
-	// Cant really refresh a NULL server
+	// Can't really refresh a NULL server
 	if (!server) {
 		return;
 	}
@@ -300,7 +300,7 @@ void CServerListCtrl::RefreshServer( CServer* server )
 
 	#endif
 
-	// Deletions of items causes rather large ammount of flicker, so to
+	// Deletions of items causes rather large amount of flicker, so to
 	// avoid this, we resort the list to ensure correct ordering.
 	if (!IsItemSorted(itemnr)) {
 		SortList();
@@ -327,7 +327,7 @@ void CServerListCtrl::HighlightServer( const CServer* server, bool highlight )
 			wxFont font = GetFont();
 
 			if ( highlight ) {
-				font.SetWeight( wxBOLD );
+				font.SetWeight( wxFONTWEIGHT_BOLD );
 
 				m_connected = server;
 			}

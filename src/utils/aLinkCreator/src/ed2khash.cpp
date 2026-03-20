@@ -125,7 +125,7 @@ bool Ed2kHash::SetED2KHashFromFile(const wxFileName& filename, MD4Hook hook)
           partcount++;
 
 #ifdef WANT_STRING_IMPLEMENTATION
-          // MD4_HASHLEN_BYTE is ABSOLUTLY needed as we dont want NULL
+          // MD4_HASHLEN_BYTE is ABSOLUTELY needed as we dont want NULL
           // character to be interpreted as the end of the parthash string
 #if wxUSE_UNICODE
 
@@ -195,11 +195,7 @@ bool Ed2kHash::SetED2KHashFromFile(const wxString& filename, MD4Hook hook)
   return SetED2KHashFromFile(wxFileName(filename), hook);
 }
 
-#if wxCHECK_VERSION(2, 9, 0)
 #define WXLONGLONGFMTSPEC wxT(wxLongLongFmtSpec)
-#else
-#define WXLONGLONGFMTSPEC wxLongLongFmtSpec
-#endif
 
 /// Get Ed2k link
 wxString Ed2kHash::GetED2KLink(const bool addPartHashes, const wxArrayString* arrayOfUrls)

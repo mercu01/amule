@@ -90,7 +90,7 @@ m_filterEnabled(false)
 	InsertColumn( ID_SEARCH_COL_TYPE,    _("Type"),      wxLIST_FORMAT_LEFT,  65, wxT("Y") );
 	InsertColumn( ID_SEARCH_COL_FILEID,  _("FileID"),    wxLIST_FORMAT_LEFT, 280, wxT("I") );
 	InsertColumn( ID_SEARCH_COL_STATUS,  _("Status"),    wxLIST_FORMAT_LEFT, 100, wxT("S") );
-	InsertColumn( ID_SEARCH_COL_DIRECTORY,  _("Directories"),    wxLIST_FORMAT_LEFT, 280, wxT("D") );  // I would have prefered "Directory" but this is already translated
+	InsertColumn( ID_SEARCH_COL_DIRECTORY,  _("Directories"),    wxLIST_FORMAT_LEFT, 280, wxT("D") );  // I would have preferred "Directory" but this is already translated
 
 	m_nResultsID = 0;
 
@@ -471,7 +471,7 @@ int CSearchListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
 	CSearchFile* file1 = reinterpret_cast<CSearchFile*>(item1);
 	CSearchFile* file2 = reinterpret_cast<CSearchFile*>(item2);
 
-	// Modifies the result, 1 for ascending, -1 for decending
+	// Modifies the result, 1 for ascending, -1 for descending
 	int modifier = (sortData & CMuleListCtrl::SORT_DES) ? -1 : 1;
 	bool alternate = (sortData & CMuleListCtrl::SORT_ALT) != 0;
 
@@ -516,7 +516,7 @@ int CSearchListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
 			int cmp2 = CmpAny( file1->GetCompleteSourceCount(), file2->GetCompleteSourceCount() );
 
 			if ( alternate ) {
-				// Swap criterias
+				// Swap criteria
 				int temp = cmp2;
 				cmp2 = cmp;
 				cmp = temp;
@@ -826,7 +826,7 @@ void CSearchListCtrl::OnDrawItem(
 
 	// Define the border of the drawn area
 	if (highlighted) {
-		dc->SetPen(*(wxThePenList->FindOrCreatePen(CMuleColour(dc->GetBackground().GetColour()).Blend(65), 1, wxSOLID)));
+		dc->SetPen(*(wxThePenList->FindOrCreatePen(CMuleColour(dc->GetBackground().GetColour()).Blend(65), 1, wxPENSTYLE_SOLID)));
 	} else {
 		dc->SetPen(*wxTRANSPARENT_PEN);
 		dc->SetTextForeground(GetItemTextColour(item));
@@ -912,7 +912,7 @@ void CSearchListCtrl::OnDrawItem(
 		const int middle = cur_rec.y + ( cur_rec.height + 1 ) / 2;
 
 		// Set up a new pen for drawing the tree
-		dc->SetPen( *(wxThePenList->FindOrCreatePen(dc->GetTextForeground(), 1, wxSOLID)) );
+		dc->SetPen( *(wxThePenList->FindOrCreatePen(dc->GetTextForeground(), 1, wxPENSTYLE_SOLID)) );
 
 		if (file->GetParent()) {
 			// Draw the line to the filename

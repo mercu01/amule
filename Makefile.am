@@ -7,7 +7,7 @@ endif
 SUBDIRS += docs src unittests
 
 EXTRA_DIST = amule.rc amule.ico amule.png convert.ico \
-	aMule.spec \
+	README.Debian-Packages aMule-CVS.spec aMule.spec \
 	amule_build_install.sh autogen.sh \
 	po/l10n.xsl
 
@@ -16,6 +16,9 @@ icondir = $(datadir)/pixmaps
 
 dist_util_DATA =
 utildir = $(datadir)/applications
+
+dist_appstream_DATA =
+appstreamdir = $(datadir)/metainfo
 
 if MONOLITHIC
 dist_icon_DATA += amule.xpm
@@ -26,6 +29,8 @@ if AMULE_GUI
 dist_icon_DATA += amulegui.xpm
 dist_util_DATA += amulegui.desktop
 endif
+
+dist_appstream_DATA += org.amule.amule.metainfo.xml
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -56,5 +61,5 @@ MAINTAINERCLEANFILES = ABOUT-NLS \
 					   missing \
 					   mkinstalldirs
 
-EXTRA__DIST__SUBDIRS = aMule.app
+EXTRA__DIST__SUBDIRS = aMule.app debian
 include $(top_srcdir)/automake/dist-hook.am

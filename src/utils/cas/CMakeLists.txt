@@ -15,25 +15,18 @@ if (WIN32)
 	)
 endif()
 
-target_compile_definitions (cas
-		PRIVATE ${gdlib_CFLAGS}
-)
-
 target_include_directories (cas
 	PRIVATE ${CMAKE_BINARY_DIR}
 )
 
 target_link_libraries (cas
-	${gdlib_LIBRARIES}
-	${gdlib_LD_FLAGS}
+	PkgConfig::gdlib
 )
 
 install (TARGETS cas
 	RUNTIME DESTINATION bin
 )
 
-
 install (FILES tmp.html stat.png
 	DESTINATION "${CMAKE_INSTALL_DATADIR}/cas"
 )
-

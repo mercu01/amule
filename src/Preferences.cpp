@@ -245,13 +245,13 @@ wxString	CPreferences::s_StatsServerURL;
 /**
  * Template Cfg class for connecting with widgets.
  *
- * This template provides the base functionionality needed to syncronize a
+ * This template provides the base functionality needed to synchronize a
  * variable with a widget. However, please note that wxGenericValidator only
  * supports a few types (int, wxString, bool and wxArrayInt), so this template
  * can't always be used directly.
  *
  * Cfg_Str and Cfg_Bool are able to use this template directly, whereas Cfg_Int
- * makes use of serveral workaround to enable it to be used with integers other
+ * makes use of several workaround to enable it to be used with integers other
  * than int.
  */
 template <typename TYPE>
@@ -304,7 +304,7 @@ public:
 	}
 
 
-	/** Updates the assosiated variable, returning true on success. */
+	/** Updates the associated variable, returning true on success. */
 	virtual bool TransferFromWindow()
 	{
 		if ( m_widget ) {
@@ -324,7 +324,7 @@ public:
 		return false;
 	}
 
-	/** Updates the assosiated widget, returning true on success. */
+	/** Updates the associated widget, returning true on success. */
 	virtual bool TransferToWindow()
 	{
 		if ( m_widget ) {
@@ -554,14 +554,14 @@ protected:
  * Helper function for creating new Cfg_Ints.
  *
  * @param keyname The cfg-key under which the item should be saved.
- * @param value The variable to syncronize. The type of this variable defines the type used to create the Cfg_Int.
+ * @param value The variable to synchronize. The type of this variable defines the type used to create the Cfg_Int.
  * @param defaultVal The default value if the key isn't found when loading the value.
  * @return A pointer to the new Cfg_Int object. The caller is responsible for deleting it.
  *
  * This template-function returns a Cfg_Int of the appropriate type for the
  * variable used as argument and should be used to avoid having to specify
  * the integer type when adding a new Cfg_Int, since that's just increases
- * the maintainence burden.
+ * the maintenance burden.
  */
 template <class TYPE>
 Cfg_Base* MkCfg_Int( const wxString& keyname, TYPE& value, int defaultVal )
@@ -754,7 +754,7 @@ public:
 			wxBusyCursor busyCursor;
 			aMuleLanguages[0].displayname = wxGetTranslation(aMuleLanguages[0].name);
 
-			// This supresses error-messages about invalid locales
+			// This suppresses error-messages about invalid locales
 			for (unsigned int i = 1; i < itemsof(aMuleLanguages); ++i) {
 				if ((aMuleLanguages[i].id > wxLANGUAGE_USER_DEFINED) || wxLocale::IsAvailable(aMuleLanguages[i].id)) {
 					wxLogNull	logTarget;
@@ -969,7 +969,7 @@ CPreferences::CPreferences()
 	LoadPreferences();
 	ReloadSharedFolders();
 
-	// serverlist adresses
+	// serverlist addresses
 	CTextFile slistfile;
 	if (slistfile.Open(s_configDir + wxT("addresses.dat"), CTextFile::read)) {
 		adresses_list = slistfile.ReadLines();
@@ -1156,7 +1156,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_STARTMIN,	(new Cfg_Bool( wxT("/eMule/StartupMinimized"), s_startMinimized, false )));
 
 	/**
-	 * GUI appearence
+	 * GUI appearance
 	 **/
 	NewCfgItem(IDC_3DDEPTH,		(MkCfg_Int( wxT("/eMule/3DDepth"), s_depth3D, 10 )));
 	NewCfgItem(IDC_TOOLTIPDELAY,	(MkCfg_Int( wxT("/eMule/ToolTipDelay"), s_iToolDelayTime, 1 )));
@@ -1271,7 +1271,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	s_MiscList.push_back( new Cfg_Str(	wxT("/eMule/Ed2kServersUrl"),		s_Ed2kURL, wxT("http://upd.emule-security.org/server.met") ) );
 	s_MiscList.push_back( MkCfg_Int( wxT("/eMule/ShowRatesOnTitle"),		s_showRatesOnTitle, 0 ));
 
-	s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/GeoLiteCountryUpdateUrl"),		s_GeoIPUpdateUrl, wxT("http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz") ) );
+	s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/GeoLiteCountryUpdateUrl"),		s_GeoIPUpdateUrl, wxT("https://mailfud.org/geoip-legacy/GeoIP.dat.gz") ) );
 	wxConfigBase::Get()->DeleteEntry(wxT("/eMule/GeoIPUpdateUrl")); // get rid of the old one for a while
 
 	s_MiscList.push_back( new Cfg_Str( wxT("/WebServer/Path"),				s_sWebPath, wxT("amuleweb") ) );

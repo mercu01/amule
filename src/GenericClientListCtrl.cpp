@@ -130,9 +130,9 @@ m_columndata(0, NULL)
 	m_menu = NULL;
 	m_showing = false;
 
-	m_hilightBrush  = CMuleColour(wxSYS_COLOUR_HIGHLIGHT).Blend(125).GetBrush();
+	m_hilightBrush  = CMuleColour(wxSYS_COLOUR_HIGHLIGHT)/*.Blend(125)*/.GetBrush();
 
-	m_hilightUnfocusBrush = CMuleColour(wxSYS_COLOUR_BTNSHADOW).Blend(125).GetBrush();
+	m_hilightUnfocusBrush = CMuleColour(wxSYS_COLOUR_BTNSHADOW)/*.Blend(125)*/.GetBrush();
 
 	m_clientcount = 0;
 }
@@ -466,7 +466,7 @@ void CGenericClientListCtrl::ShowSources( const CKnownFileVector& files )
  * Helper-function: This function is used to gather selected items.
  *
  * @param list A pointer to the list to gather items from.
- * @return A list containing the selected items of the choosen types.
+ * @return A list containing the selected items of the chosen types.
  */
 static ItemList GetSelectedItems( CGenericClientListCtrl* list )
 {
@@ -669,7 +669,7 @@ void CGenericClientListCtrl::OnDrawItem(
 		dc->SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 		dc->SetPen( colour.Blend(65).GetPen() );
 	} else {
-		dc->SetBackground(*(wxTheBrushList->FindOrCreateBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX), wxSOLID)));
+		dc->SetBackground(*(wxTheBrushList->FindOrCreateBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX), wxBRUSHSTYLE_SOLID)));
 		dc->SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 		dc->SetPen(*wxTRANSPARENT_PEN);
 	}
@@ -1145,8 +1145,8 @@ int CGenericClientListCtrl::SortProc(wxUIntPtr param1, wxUIntPtr param2, long so
 	sortData &= CMuleListCtrl::COLUMN_MASK;
 	int comp = 0;
 
-	// Two sources, some different possibilites
-	// Avilable sources first, if we have both an
+	// Two sources, some different possibilities
+	// Available sources first, if we have both an
 	// available and an unavailable
 	comp = ( item2->GetType() - item1->GetType() );
 
@@ -1157,7 +1157,7 @@ int CGenericClientListCtrl::SortProc(wxUIntPtr param1, wxUIntPtr param2, long so
 		comp = Compare(item1->GetSource(), item2->GetSource(), sortData);
 	}
 
-	// We modify the result so that it matches with ascending or decending
+	// We modify the result so that it matches with ascending or descending
 	return sortMod * comp;
 }
 

@@ -55,11 +55,12 @@
 #endif
 
 #include <vector>
+#include <exception>
 
 
 /**
  * This functions displays a verbose description of
- * any unhandled exceptions that occour and then
+ * any unhandled exceptions that occur and then
  * terminate the program by raising SIGABRT.
  */
 void OnUnhandledException()

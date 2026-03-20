@@ -16,7 +16,6 @@
 #include <wx/textctrl.h>
 
 #define wxLC_OWNERDRAW 0x10000
-#define WXWIN_COMPATIBILITY_2_8 1
 
 #include <wx/imaglist.h>
 
@@ -94,7 +93,7 @@ public:
 #endif // wxABI 2.8.4+
 
 // It is not certain that sizeof(long) == sizeof(void*), and since we
-// just about only use pointers as item-data, I've choosen to disable
+// just about only use pointers as item-data, I've chosen to disable
 // this function to prevent mistakes. Use SetItemPtrData instead.
 #if 0
     bool SetItemData(long item, long data);

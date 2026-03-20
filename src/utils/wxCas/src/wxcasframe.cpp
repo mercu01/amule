@@ -280,11 +280,11 @@ WxCasFrame::GetStatImage () const
 #ifdef __WINDOWS__
 
 	memdc.
-	SetFont ( wxFont ( 6, wxSWISS, wxNORMAL, wxBOLD ) );
+	SetFont ( wxFont ( 6, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD ) );
 #else
 
 	memdc.
-	SetFont ( wxFont ( 8, wxSWISS, wxNORMAL, wxBOLD ) );
+	SetFont ( wxFont ( 8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD ) );
 #endif
 
 	memdc.
@@ -536,7 +536,7 @@ WxCasFrame::UpdateAll ( bool forceFitting )
 	bool needFit = UpdateStatsPanel ();
 
 	if ( needFit || forceFitting ) {
-		// Fit stats pannel
+		// Fit stats panel
 		m_mainPanel->Fit();
 
 		// Fit main frame

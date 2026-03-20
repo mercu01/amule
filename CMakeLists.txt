@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.5)
 project (amule)
 set (MIN_BOOST_VERSION 1.47)
 set (MIN_CRYPTOPP_VERSION 5.6)
@@ -7,16 +7,16 @@ set (MIN_WX_VERSION 2.8.12)
 set (PACKAGE "amule")
 set (PACKAGE_BUGREPORT "admin@amule.org")
 set (PACKAGE_NAME "aMule")
-set (PACKAGE_STRING "aMule 2.3.3")
+set (PACKAGE_STRING "aMule SVN")
 set (PACKAGE_TARNAME "amule")
 set (PACKAGE_URL \"\")
-set (PACKAGE_VERSION "2.3.3")
+set (PACKAGE_VERSION "SVN")
 set (VERSION "GIT")
 set (DEFAULT_BUILD_TYPE "Release")
 set (RECONF_COMMAND ${CMAKE_COMMAND})
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/.git")
-	SET (DEFAULT_BUILD_TYPE "Debug")
+	set (DEFAULT_BUILD_TYPE "Debug")
 endif()
 
 # Set the possible values of build type for cmake-gui
@@ -130,6 +130,15 @@ if (BUILD_REMOTEGUI)
 	install (FILES amulegui.desktop
 		DESTINATION "${CMAKE_INSTALL_DATADIR}/applications"
 	)
+endif()
+
+install (FILES org.amule.amule.metainfo.xml
+	DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo"
+)
+
+if (ENABLE_NLS)
+	include (FindGettext)
+	add_subdirectory (po)
 endif()
 
 add_subdirectory (docs)

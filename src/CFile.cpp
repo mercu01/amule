@@ -87,10 +87,6 @@ char* mktemp( char * path ) { return path ;}
 #	define   O_BINARY    (0)
 #endif  //__UNIX__
 
-#if defined(__WINDOWS__) && !wxCHECK_VERSION(3, 1, 0)
-#include <wx/msw/mslu.h>
-#endif
-
 
 // The following defines handle different names across platforms,
 // and ensures that we use 64b IO on windows (only 32b by default).
@@ -271,7 +267,7 @@ bool CFile::Open(const CPath& fileName, OpenMode mode, int accessMode)
 	m_fd = _wopen(m_filePath.GetRaw().c_str(), flags, accessMode);
 #else
 	Unicode2CharBuf tmpFileName = filename2char(m_filePath.GetRaw());
-	wxASSERT_MSG(tmpFileName, wxT("Convertion failed in CFile::Open"));
+	wxASSERT_MSG(tmpFileName, wxT("Conversion failed in CFile::Open"));
 	m_fd = open(tmpFileName, flags, accessMode);
 #endif
 	syscall_check(m_fd != fd_invalid, m_filePath, wxT("opening file"));
@@ -363,7 +359,10 @@ sint64 CFile::doWrite(const void* buffer, size_t nCount)
 
 sint64 CFile::doSeek(sint64 offset) const
 {
-	MULE_VALIDATE_STATE(IsOpened(), wxT("Cannot seek on closed file."));
+	if (!IsOpened()) {
+		throw CSeekFailureException(wxT("Cannot seek on closed file."));
+	}
+
 	MULE_VALIDATE_PARAMS(offset >= 0, wxT("Invalid position, must be positive."));
 
 	sint64 result = SEEK_FD(m_fd, offset, SEEK_SET);

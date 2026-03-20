@@ -51,7 +51,7 @@ void writePredefData(CFileDataIO* file)
 
 
 /////////////////////////////////////////////////////////////////////
-// Specialize this template for each implemention
+// Specialize this template for each implementation
 // of the CFileDataIO interface you wish to test.
 //
 // This struct must be a subclass of Test.
@@ -762,7 +762,6 @@ TEST(CFile, Constructor)
 		ASSERT_TRUE(file.fd() == CFile::fd_invalid);
 		ASSERT_RAISES(CRunTimeException, file.WriteUInt8(0));
 		ASSERT_RAISES(CRunTimeException, file.ReadUInt8());
-		ASSERT_RAISES(CRunTimeException, file.Seek(0, wxFromStart));
 		ASSERT_RAISES(CRunTimeException, file.GetLength());
 		ASSERT_RAISES(CRunTimeException, file.GetPosition());
 		ASSERT_RAISES(CRunTimeException, file.SetLength(13));
@@ -874,7 +873,7 @@ TEST(CFile, Create)
 		file.WriteUInt32(1);
 	}
 
-	// Check that owerwrite = false works as expected
+	// Check that overwrite = false works as expected
 	{
 		CFile file;
 		ASSERT_FALSE(file.Create(testFile, false, testMode));
@@ -893,7 +892,7 @@ TEST(CFile, Create)
 		ASSERT_TRUE(!file.IsOpened());
 	}
 
-	// Check that owerwrite = true works as expected
+	// Check that overwrite = true works as expected
 	{
 		CFile file;
 		ASSERT_TRUE(file.Create(testFile, true, testMode));

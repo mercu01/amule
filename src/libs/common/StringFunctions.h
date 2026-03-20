@@ -127,7 +127,7 @@ inline char* nstrdup(const char* src)
 inline long StrToLong(const wxString& str)
 {
 	long value = 0;
-	if (!str.ToLong(&value)) {	// value may be changed even if it failes according to wx docu
+	if (!str.ToLong(&value)) {	// value may be changed even if it fails according to wx docu
 		value = 0;
 	}
 	return value;
@@ -144,25 +144,11 @@ inline unsigned long StrToULong(const wxString& str)
 
 inline unsigned long long StrToULongLong(const wxString& str)
 {
-#if wxCHECK_VERSION(2, 9, 0)
 	unsigned long long value = 0;
 	if (!str.ToULongLong(&value)) {
 		value = 0;
 	}
 	return value;
-
-#else	// wx 2.8
-
-	Unicode2CharBuf buf = unicode2char(str);
-	if (!buf) {		// something went wrong
-		return 0;
-	}
-#ifdef _MSC_VER
-	return _atoi64(buf);
-#else
-	return atoll(buf);
-#endif
-#endif	// wx 2.8
 }
 
 inline size_t GetRawSize(const wxString& rstr, EUtf8Str eEncode)
@@ -238,7 +224,7 @@ wxString validateURI(const wxString& url);
  * compared. This allows strings such as "a (2)" and "a (10)" to
  * be properly sorted for displaying.
  *
- * Currently does not handle floats (they are treated as to seperate
+ * Currently does not handle floats (they are treated as to separate
  * fields, nor negative numbers.
  */
 int FuzzyStrCmp(const wxString& a, const wxString& b);

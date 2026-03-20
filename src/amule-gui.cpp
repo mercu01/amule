@@ -28,6 +28,7 @@
 #include <common/ClientVersion.h>
 
 #include <wx/clipbrd.h>			// Needed for wxClipBoard
+#include <wx/sizer.h>
 #include <wx/tokenzr.h>			// Needed for wxStringTokenizer
 
 #include "SharedFilesWnd.h"		// Needed for CSharedFilesWnd
@@ -98,6 +99,11 @@ IMPLEMENT_APP(CamuleGuiApp)
 
 CamuleGuiBase::CamuleGuiBase()
 {
+	// Disable these checks for now.  The code really needs updating to
+	// eliminate these inconsistent flag uses, but these checks are new
+	// since wx3.0, and this should just return us to what 3.0 did.
+	wxSizerFlags::DisableConsistencyChecks();
+
 	amuledlg = NULL;
 }
 
@@ -140,7 +146,7 @@ int CamuleGuiBase::InitGui(bool geometry_enabled, wxString &geom_string)
 		long width = geometry_width;
 		long height = geometry_height;
 
-		// Get the avilable display area
+		// Get the available display area
 		wxRect display = wxGetClientDisplayRect();
 
 		// We want to place aMule inside the client area by default

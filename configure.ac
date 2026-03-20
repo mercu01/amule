@@ -24,15 +24,11 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 #
 
-AC_INIT([aMule], [2.3.3], [admin@amule.org])
+AC_INIT([aMule],[SVN],[admin@amule.org])
 AM_INIT_AUTOMAKE
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 
 AC_PREREQ(2.62)
-
-# autoconf 2.70 introduced some incompatibilities that will make the build fail
-# As a "workaround" reject 2.70 and above for now.
-m4_if(m4_version_compare(m4_defn([AC_AUTOCONF_VERSION]), [2.70]), [-1],, [m4_fatal([autoconf ]m4_defn([AC_AUTOCONF_VERSION])[ is known to not work with aMule. Please use 2.69 instead.])])
 
 AC_CONFIG_SRCDIR([src/amule.cpp])
 AC_CONFIG_HEADERS([config.h])
@@ -176,7 +172,7 @@ MULE_IF_ENABLED_ANY([monolithic, amule-daemon, amule-gui, amulecmd, webserver, a
 		equivalent variable and wxWidgets version is 2.8.12 or above.
 		])]
 	)
-	AS_IF([test "${WX_VERSION_FULL}" = "2.9.0"], [AC_MSG_ERROR([
+	AS_IF([test "$WX_VERSION_MAJOR""$WX_VERSION_MINOR" -lt 32], [AC_MSG_ERROR([
 		This version of wxWidgets is known to not work with aMule.
 		Please upgrade to a newer version.]
 		)]
@@ -201,6 +197,7 @@ MULE_IF_ENABLED_ANY([monolithic, amule-gui, wxcas, alc],
 		enabled version of wxWidgets and then retry.
 	])]
 )])
+AS_IF([(test "${WX_PORT}" = gtk1 || test "${WX_PORT}" = gtk2)],[AC_MSG_ERROR([${WX_PORT} isn't supported.])])
 
 
 dnl Resource compiler for W32
@@ -214,7 +211,7 @@ MULE_ARG_ENABLE([upnp], [yes], [do not compile UPnP code])
 MULE_IF_ENABLED_ANY([monolithic, amule-daemon],, [MULE_ENABLEVAR([upnp])=no])
 MULE_IF_ENABLED([upnp], [
 	LIBUPNP_CHECK(
-		[1.6.6],
+		[1.6.7],
 		[MULE_APPEND([LIBUPNP_CPPFLAGS], [-DENABLE_UPNP=1])],
 		[MULE_ENABLEVAR([upnp])=disabled
 		MULE_WARNING([UPnP code has been disabled because ${libupnp_error}.])]
@@ -321,6 +318,7 @@ AC_LANG_POP([C++])
 dnl Sets gettext version.
 dnl AM_GNU_GETTEXT_VERSION *must not* be moved away from configure.ac!
 AM_GNU_GETTEXT_VERSION(0.11.5)
+AM_GNU_GETTEXT([no-libtool], [need-ngettext])
 MULE_CHECK_NLS
 AS_IF([test x$USE_INCLUDED_LIBINTL = xyes], [AC_CONFIG_COMMANDS([intl], [[
 	test -d intl || mkdir intl

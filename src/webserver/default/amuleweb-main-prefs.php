@@ -123,7 +123,7 @@ var initvals = new Object;
 		);
 		$conn_opts = array("max_line_up_cap","max_up_limit",
 			"max_line_down_cap","max_down_limit", "slot_alloc", 
-			"tcp_port","udp_dis","max_file_src","max_conn_total","autoconn_en", 
+			"tcp_port","udp_port","udp_dis","max_file_src","max_conn_total","autoconn_en","reconn_en", 
       "EC_TAG_CONN_START_HOUR_ALT_RATE",
       "EC_TAG_CONN_START_MINUTE_ALT_RATE",
       "EC_TAG_CONN_END_HOUR_ALT_RATE",
@@ -131,6 +131,7 @@ var initvals = new Object;
       "EC_TAG_CONN_MAX_UL_ALT_RATE",
       "EC_TAG_CONN_MAX_DL_ALT_RATE",
       "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE");
+		$webserver_opts = array("use_gzip", "autorefresh_time");
 		
 		$all_opts;
 		foreach ($conn_opts as $i) {
