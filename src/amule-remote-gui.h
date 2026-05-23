@@ -26,6 +26,10 @@
 #define AMULE_REMOTE_GUI_H
 
 
+#include <deque>				// std::deque for CStatGraphRem rolling-average windows
+#include <functional>				// std::function for the CSharedFilesRem
+								// Reload(yieldCb) shim — matches the daemon-side
+								// signature added in PrefsUnifiedDlg's commit path.
 #include <ec/cpp/RemoteConnect.h>		// Needed for CRemoteConnect
 
 
@@ -59,7 +63,7 @@ class CEConnectDlg : public wxDialog {
 	wxString login, passwd;
 	bool m_save_user_pass;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 public:
 	CEConnectDlg();
 
@@ -73,8 +77,7 @@ public:
 	bool SaveUserPass() { return m_save_user_pass; }
 };
 
-DECLARE_LOCAL_EVENT_TYPE(wxEVT_EC_INIT_DONE, wxEVT_USER_FIRST + 1001)
-
+wxDECLARE_EVENT(wxEVT_EC_INIT_DONE, wxEvent);
 class wxECInitDoneEvent : public wxEvent {
 public:
 	wxECInitDoneEvent() : wxEvent(-1, wxEVT_EC_INIT_DONE)
@@ -484,6 +487,7 @@ public:
 	void StopUDPRequests() {}
 	void AddFileLinkToDownload(CED2KFileLink*, uint8);
 	bool AddLink(const wxString &link, uint8 category = 0);
+	void AddLinks(const wxArrayString& links, uint8 category = 0);
 	void UnsetCompletedFilesExist();
 	void ResetCatParts(int cat);
 	void AddSearchToDownload(CSearchFile* toadd, uint8 category);
@@ -506,6 +510,22 @@ public:
 	bool RenameFile(CKnownFile* file, const CPath& newName);
 	void SetFileCommentRating(CKnownFile* file, const wxString& newComment, int8 newRating);
 	void CopyFileList(std::vector<CKnownFile*>& out_list) const;
+
+	// Remote-side shim for the daemon's cancellable-progress Reload
+	// added in the shared-dirs deferred-apply flow. The actual file
+	// walk happens on amuled; here we just fall through to the
+	// existing EC-driven Reload(sendtoserver=true) and ignore the
+	// progress callback. Returns true (never "cancelled") because
+	// the local-thread part of the operation is essentially instant.
+	bool Reload(std::function<bool(size_t)> /* yieldCb */) {
+		Reload();
+		return true;
+	}
+
+	// Remote-side no-op. The actual watcher lives on amuled and is
+	// driven there by the EC-synced AutoRescanSharedDirs pref; on the
+	// GUI side there is nothing to enable/disable locally.
+	void EnableDirectoryWatcher(bool /* enable */) {}
 };
 
 class CKnownFilesRem : public CRemoteContainer<CKnownFile, uint32, CEC_SharedFile_Tag> {
@@ -544,7 +564,7 @@ public:
 	// Actions
 	//
 	void Reload();
-	void Update(wxString strURL = wxEmptyString);
+	void Update(wxString strURL = "");
 	bool IsReady() const { return true; }
 };
 
@@ -554,12 +574,12 @@ public:
 	CSearchListRem(CRemoteConnect *);
 
 	int m_curr_search;
-	typedef std::map<long, CSearchResultList> ResultMap;
+	typedef std::map<wxUIntPtr, CSearchResultList> ResultMap;
 	ResultMap m_results;
 
-	const CSearchResultList& GetSearchResults(long nSearchID);
-	void RemoveResults(long nSearchID);
-	const CSearchResultList& GetSearchResults(long nSearchID) const;
+	const CSearchResultList& GetSearchResults(wxUIntPtr nSearchID);
+	void RemoveResults(wxUIntPtr nSearchID);
+	const CSearchResultList& GetSearchResults(wxUIntPtr nSearchID) const;
 	//
 	// Actions
 	//
@@ -568,6 +588,13 @@ public:
 		const CSearchList::CSearchParams& params);
 
 	void StopSearch(bool globalOnly = false);
+
+	// Stub for monolithic CSearchList API parity.  amulegui has no
+	// direct Kad layer access; an EC opcode for "search-more" is a
+	// follow-up PR.  Until then these always return false, which keeps
+	// the SearchDlg "More" button disabled in remote-GUI mode.
+	bool IsKadSearch(uint32_t /*searchID*/) const { return false; }
+	bool RequestMoreResults(uint32_t /*searchID*/) { return false; }
 
 	//
 	// template
@@ -614,6 +641,37 @@ public:
 	void DoRequery();
 };
 
+// Async EC poller that pulls the rolling-window graph history from the
+// daemon and feeds CStatisticsDlg / CKadDlg via the same UpdateStatGraphs
+// pipeline monolithic amule uses.
+class CStatGraphRem : public CECPacketHandlerBase {
+	virtual void HandlePacket(const CECPacket *);
+	CRemoteConnect *m_conn;
+	// Last timestamp the daemon reported; sent back on the next request
+	// so the response only carries points the GUI hasn't seen yet.
+	double m_lastTimestamp;
+
+	// Per-metric sliding window of recent samples — feeds the
+	// "Running average" line on each COScopeCtrl. Mirrors monolithic
+	// amule's CPreciseRateCounter with count_average=true: simple
+	// mean of the last N one-second samples, where N is
+	// GetStatsAverageMinutes()*60. Session average is pulled from
+	// EC_TAG_STATSGRAPH_SESSION_* (set by the daemon) so no local
+	// integral is needed.
+	std::deque<float> m_winDl;
+	std::deque<float> m_winUp;
+	std::deque<float> m_winKad;
+public:
+	// Peak connection count seen so far. CLIENT_GUI doesn't get the
+	// daemon's CStatTreeItemMaxValue accessor, so we track it locally
+	// off the connection samples we already unpack for the graphs.
+	uint32 m_peakConnections;
+public:
+	CStatGraphRem(CRemoteConnect * conn)
+		: m_conn(conn), m_lastTimestamp(0.0), m_peakConnections(0) {}
+	void DoRequery();
+};
+
 class CListenSocketRem {
 	uint32 m_peak_connections;
 public:
@@ -622,6 +680,12 @@ public:
 
 class CamuleRemoteGuiApp : public wxApp, public CamuleGuiBase, public CamuleAppCommon {
 	wxTimer*	poll_timer;
+	// Watchdog on the initial EC connect attempt. Started when the user
+	// clicks OK on the connection dialog; fires if no OnECConnection
+	// event has arrived within the timeout, so a wrong host / firewalled
+	// daemon doesn't leave amulegui "not responding" indefinitely with
+	// no visible window while TCP SYN silently times out over minutes.
+	wxTimer*	connect_timeout_timer;
 
 	virtual int InitGui(bool geometry_enable, wxString &geometry_string);
 
@@ -630,6 +694,7 @@ class CamuleRemoteGuiApp : public wxApp, public CamuleGuiBase, public CamuleAppC
 	int OnExit();
 
 	void OnPollTimer(wxTimerEvent& evt);
+	void OnConnectTimeout(wxTimerEvent& evt);
 
 	void OnECConnection(wxEvent& event);
 	void OnECInitDone(wxEvent& event);
@@ -655,9 +720,7 @@ public:
 
 	CPreferencesRem *glob_prefs;
 
-#ifdef ASIO_SOCKETS
 	CAsioService*	m_AsioService;
-#endif
 
 	//
 	// Provide access to core data thru EC
@@ -672,6 +735,7 @@ public:
 	CFriendListRem *friendlist;
 	CListenSocketRem *listensocket;
 	CStatTreeRem * stattree;
+	CStatGraphRem * statgraphs;
 
 	CStatistics *m_statistics;
 
@@ -713,7 +777,7 @@ public:
 	uint32 GetKadIndexedLoad() const	{ return theStats::GetKadIndexedLoad(); }
 	const CUInt128&	GetKadID() const	{ return m_kadID; }
 	// True IP of machine
-	uint32 GetKadIPAdress() const		{ return theStats::GetKadIPAdress(); }
+	uint32 GetKadIPAddress() const		{ return theStats::GetKadIPAddress(); }
 	// Buddy status
 	uint8	GetBuddyStatus() const		{ return theStats::GetBuddyStatus(); }
 	uint32	GetBuddyIP() const			{ return theStats::GetBuddyIP(); }
@@ -744,7 +808,7 @@ public:
 
 	CUInt128	m_kadID;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 DECLARE_APP(CamuleRemoteGuiApp)

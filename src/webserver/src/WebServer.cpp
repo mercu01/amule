@@ -73,10 +73,10 @@ inline void set_rgb_color_val(unsigned char *start, uint32 val, unsigned char mo
 }
 
 wxString _SpecialChars(wxString str) {
-	str.Replace(wxT("&"),wxT("&amp;"));
-	str.Replace(wxT("<"),wxT("&lt;"));
-	str.Replace(wxT(">"),wxT("&gt;"));
-	str.Replace(wxT("\""),wxT("&quot;"));
+	str.Replace("&","&amp;");
+	str.Replace("<","&lt;");
+	str.Replace(">","&gt;");
+	str.Replace("\"","&quot;");
 	return str;
 }
 
@@ -157,9 +157,9 @@ wxString CURLDecoder::Decode(const wxString& url)
 	size_t i, j;
 
 	for (i = 0, j = 0; i < n; i++, j++) {
-		if (url[i] == wxT('+')) {
+		if (url[i] == '+') {
 			buffer[j] = ' ';
-		} else if (url[i] == wxT('%') && i < n - 2) {
+		} else if (url[i] == '%' && i < n - 2) {
 			char ch1 = std::toupper(url[i+1]);
 			char ch2 = std::toupper(url[i+2]);
 			if (((ch1 >= '0' && ch1 <= '9') || (ch1 >= 'A' && ch1 <= 'F')) &&
@@ -191,14 +191,14 @@ CParsedUrl::CParsedUrl(const wxString &url)
 
 		wxString params = url.AfterFirst('?');
 
-		wxStringTokenizer tkz(params, wxT("&"));
+		wxStringTokenizer tkz(params, "&");
 		while ( tkz.HasMoreTokens() ) {
 			wxString param_val = tkz.GetNextToken();
 			wxString key = param_val.BeforeFirst('=');
 			wxString val = param_val.AfterFirst('=');
 			val = CURLDecoder::Decode(val);
 			if ( m_params.count(key) ) {
-				m_params[key] = m_params[key] + wxT("|") + val;
+				m_params[key] = m_params[key] + "|" + val;
 			} else {
 				m_params[key] = val;
 			}
@@ -214,13 +214,6 @@ void CParsedUrl::ConvertParams(std::map<std::string, std::string> &dst)
 	}
 }
 
-#ifndef ASIO_SOCKETS
-BEGIN_EVENT_TABLE(CWebServerBase, wxEvtHandler)
-	EVT_SOCKET(ID_WEBLISTENSOCKET_EVENT, CWebServerBase::OnWebSocketServerEvent)
-	EVT_SOCKET(ID_WEBCLIENTSOCKET_EVENT, CWebServerBase::OnWebSocketEvent)
-END_EVENT_TABLE()
-#endif
-
 CWebServerBase::CWebServerBase(CamulewebApp *webApp, const wxString& templateDir) :
 	m_ServersInfo(webApp), m_SharedFileInfo(webApp), m_DownloadFileInfo(webApp, &m_ImageLib),
 	m_UploadsInfo(webApp), m_SearchInfo(webApp), m_Stats(500, webApp),
@@ -232,31 +225,27 @@ CWebServerBase::CWebServerBase(CamulewebApp *webApp, const wxString& templateDir
 	// Init stat graphs
 #ifdef WITH_LIBPNG
 	m_ImageLib.AddImage(new CDynStatisticImage(200, true, m_Stats.DownloadSpeed()),
-		wxT("/amule_stats_download.png"));
+		"/amule_stats_download.png");
 	m_ImageLib.AddImage(new CDynStatisticImage(200, true, m_Stats.UploadSpeed()),
-		wxT("/amule_stats_upload.png"));
+		"/amule_stats_upload.png");
 	m_ImageLib.AddImage(new CDynStatisticImage(200, false, m_Stats.ConnCount()),
-		wxT("/amule_stats_conncount.png"));
+		"/amule_stats_conncount.png");
 	m_ImageLib.AddImage(new CDynStatisticImage(200, false, m_Stats.KadCount()),
-		wxT("/amule_stats_kad.png"));
+		"/amule_stats_kad.png");
 #endif
 
 	m_upnpEnabled = webInterface->m_UPnPWebServerEnabled;
 	m_upnpTCPPort = webInterface->m_UPnPTCPPort;
 
-#ifdef ASIO_SOCKETS
 	m_AsioService = new CAsioService;
-#endif
 }
 
 
 // Probably always terminated by Ctrl-C or kill, but make a clean shutdown of the service anyway
 CWebServerBase::~CWebServerBase()
 {
-#ifdef ASIO_SOCKETS
 	m_AsioService->Stop();
 	delete m_AsioService;
-#endif
 }
 
 
@@ -287,10 +276,6 @@ void CWebServerBase::StartServer()
 	addr.Service(webInterface->m_WebserverPort);
 
 	m_webserver_socket = new CWebLibSocketServer(addr, MULE_SOCKET_REUSEADDR, this);
-#ifndef ASIO_SOCKETS
-	m_webserver_socket->SetEventHandler(*this, ID_WEBLISTENSOCKET_EVENT);
-	m_webserver_socket->SetNotify(wxSOCKET_CONNECTION_FLAG);
-#endif
 	m_webserver_socket->Notify(true);
 	if (!m_webserver_socket->IsOk()) {
 		delete m_webserver_socket;
@@ -312,13 +297,6 @@ void CWebServerBase::StopServer()
 #endif
 }
 
-#ifndef ASIO_SOCKETS
-void CWebServerBase::OnWebSocketServerEvent(wxSocketEvent& WXUNUSED(event))
-{
-	m_webserver_socket->OnAccept();
-}
-#endif
-
 CWebLibSocketServer::CWebLibSocketServer(const class amuleIPV4Address& adr, int flags, CWebServerBase * webServerBase)
 	:	CLibSocketServer(adr, flags),
 		m_webServerBase(webServerBase)
@@ -337,52 +315,28 @@ void CWebLibSocketServer::OnAccept()
     }
 }
 
-#ifndef ASIO_SOCKETS
-void CWebServerBase::OnWebSocketEvent(wxSocketEvent& event)
-{
-	CWebSocket *socket = dynamic_cast<CWebSocket *>(event.GetSocket());
-    wxCHECK_RET(socket, wxT("Socket event with a NULL socket!"));
-    switch(event.GetSocketEvent()) {
-    case wxSOCKET_LOST:
-        socket->OnLost();
-        break;
-    case wxSOCKET_INPUT:
-        socket->OnReceive(0);
-        break;
-    case wxSOCKET_OUTPUT:
-        socket->OnSend(0);
-        break;
-    case wxSOCKET_CONNECTION:
-        break;
-    default:
-        wxFAIL;
-        break;
-    }
-}
-#endif
-
 void CScriptWebServer::ProcessImgFileReq(ThreadData Data)
 {
-	webInterface->DebugShow(wxT("**** imgrequest: ") + Data.sURL + wxT("\n"));
+	webInterface->DebugShow("**** imgrequest: " + Data.sURL + "\n");
 
 	const CSession* session = CheckLoggedin(Data);
 
 	// To prevent access to non-template images, we disallow use of paths in filenames.
-	wxString imgName = wxT("/") + wxFileName(Data.parsedURL.File()).GetFullName();
+	wxString imgName = "/" + wxFileName(Data.parsedURL.File()).GetFullName();
 	CAnyImage *img = m_ImageLib.GetImage(imgName);
 
 	// Only static images are available to visitors, in order to prevent
 	// information leakage, but still allowing images on the login page.
-	if (img && (session->m_loggedin || dynamic_cast<CFileImage*>(img))) {
+	if (img && (session->m_logged_in || dynamic_cast<CFileImage*>(img))) {
 		int img_size = 0;
 		unsigned char* img_data = img->RequestData(img_size);
 		// This unicode2char is ok.
 		Data.pSocket->SendContent(unicode2char(img->GetHTTP()), img_data, img_size);
-	} else if (!session->m_loggedin) {
-		webInterface->DebugShow(wxT("**** imgrequest: failed, not logged in\n"));
+	} else if (!session->m_logged_in) {
+		webInterface->DebugShow("**** imgrequest: failed, not logged in\n");
 		ProcessURL(Data);
 	} else {
-		webInterface->DebugShow(wxT("**** imgrequest: failed\n"));
+		webInterface->DebugShow("**** imgrequest: failed\n");
 	}
 }
 
@@ -423,17 +377,17 @@ void CWebServerBase::Send_SharedFile_Cmd(wxString file_hash, wxString cmd, uint3
 	wxCHECK2(fileHash.Decode(file_hash), /* Do nothing. */ );
 
 	CECTag hashtag(EC_TAG_KNOWNFILE, fileHash);
-	if (cmd == wxT("prio")) {
+	if (cmd == "prio") {
 		ec_cmd = new CECPacket(EC_OP_SHARED_SET_PRIO);
 		hashtag.AddTag(CECTag(EC_TAG_PARTFILE_PRIO, (uint8)opt_arg));
-	} else if ( cmd == wxT("prioup") ) {
+	} else if ( cmd == "prioup" ) {
 		SharedFile *file = m_SharedFileInfo.GetByHash(fileHash);
 		if ( file ) {
 			ec_cmd = new CECPacket(EC_OP_SHARED_SET_PRIO);
 			hashtag.AddTag(CECTag(EC_TAG_PARTFILE_PRIO,
 				GetHigherPrioShared(file->nFilePriority, file->bFileAutoPriority)));
 		}
-	} else if ( cmd == wxT("priodown") ) {
+	} else if ( cmd == "priodown" ) {
 		SharedFile *file = m_SharedFileInfo.GetByHash(fileHash);
 		if ( file ) {
 			ec_cmd = new CECPacket(EC_OP_SHARED_SET_PRIO);
@@ -462,23 +416,23 @@ void CWebServerBase::Send_DownloadFile_Cmd(wxString file_hash, wxString cmd, uin
 	wxCHECK2(fileHash.Decode(file_hash), /* Do nothing. */ );
 
 	CECTag hashtag(EC_TAG_PARTFILE, fileHash);
-	if (cmd == wxT("pause")) {
+	if (cmd == "pause") {
 		ec_cmd = new CECPacket(EC_OP_PARTFILE_PAUSE);
-	} else if (cmd == wxT("resume")) {
+	} else if (cmd == "resume") {
 		ec_cmd = new CECPacket(EC_OP_PARTFILE_RESUME);
-	} else if (cmd == wxT("cancel")) {
+	} else if (cmd == "cancel") {
 		ec_cmd = new CECPacket(EC_OP_PARTFILE_DELETE);
-	} else if (cmd == wxT("prio")) {
+	} else if (cmd == "prio") {
 		ec_cmd = new CECPacket(EC_OP_PARTFILE_PRIO_SET);
 		hashtag.AddTag(CECTag(EC_TAG_PARTFILE_PRIO, (uint8)opt_arg));
-	} else if (cmd == wxT("prioup")) {
+	} else if (cmd == "prioup") {
 		DownloadFile *file = m_DownloadFileInfo.GetByHash(fileHash);
 		if ( file ) {
 			ec_cmd = new CECPacket(EC_OP_PARTFILE_PRIO_SET);
 			hashtag.AddTag(CECTag(EC_TAG_PARTFILE_PRIO,
 				GetHigherPrio(file->lFilePrio, file->bFileAutoPriority)));
 		}
-	} else if (cmd == wxT("priodown")) {
+	} else if (cmd == "priodown") {
 		DownloadFile *file = m_DownloadFileInfo.GetByHash(fileHash);
 		if ( file ) {
 			ec_cmd = new CECPacket(EC_OP_PARTFILE_PRIO_SET);
@@ -511,7 +465,7 @@ void CWebServerBase::Send_AddServer_Cmd(wxString addr, wxString port, wxString n
 {
 	CECPacket ec_cmd(EC_OP_SERVER_ADD);
 
-	ec_cmd.AddTag(CECTag(EC_TAG_SERVER_ADDRESS, addr.Trim() + wxT(":") + port.Trim()));
+	ec_cmd.AddTag(CECTag(EC_TAG_SERVER_ADDRESS, addr.Trim() + ":" + port.Trim()));
 	ec_cmd.AddTag(CECTag(EC_TAG_SERVER_NAME, name));
 
 	Send_Discard_V2_Request(&ec_cmd);
@@ -524,11 +478,11 @@ void CWebServerBase::Send_Server_Cmd(uint32 ip, uint16 port, wxString cmd)
 	}
 
 	CECPacket *ec_cmd = 0;
-	if ( cmd == wxT("connect") ) {
+	if ( cmd == "connect" ) {
 		ec_cmd = new CECPacket(EC_OP_SERVER_CONNECT);
-	} else if ( cmd == wxT("remove") ) {
+	} else if ( cmd == "remove" ) {
 		ec_cmd = new CECPacket(EC_OP_SERVER_REMOVE);
-	} else if ( cmd == wxT("disconnect") ) {
+	} else if ( cmd == "disconnect" ) {
 		ec_cmd = new CECPacket(EC_OP_SERVER_DISCONNECT);
 	}
 	if ( ec_cmd ) {
@@ -804,14 +758,14 @@ void DownloadFileInfo::ItemInserted(DownloadFile *item)
 	item->m_Image = new CDynProgressImage(m_width, m_height, m_Template, item);
 
 #ifdef WITH_LIBPNG
-	m_ImageLib->AddImage(item->m_Image, wxT("/") + item->m_Image->Name());
+	m_ImageLib->AddImage(item->m_Image, "/" + item->m_Image->Name());
 #endif
 }
 
 void DownloadFileInfo::ItemDeleted(DownloadFile *item)
 {
 #ifdef WITH_LIBPNG
-	m_ImageLib->RemoveImage(wxT("/") + item->m_Image->Name());
+	m_ImageLib->RemoveImage("/" + item->m_Image->Name());
 #else
 	delete item->m_Image;
 #endif
@@ -930,7 +884,8 @@ CAnyImage::CAnyImage(int width, int height) : m_width(width), m_height(height)
 {
 	m_size = 0;
 	// allocate considering image header
-	m_alloc_size = width * height * sizeof(uint32) + 0x100;
+	m_alloc_size = static_cast<unsigned long>(width) *
+		static_cast<unsigned long>(height) * sizeof(uint32) + 0x100;
 	if ( m_alloc_size ) {
 		m_data = new unsigned char[m_alloc_size];
 	} else {
@@ -968,14 +923,14 @@ unsigned char *CAnyImage::RequestData(int &size)
 
 void CAnyImage::SetHttpType(wxString ext)
 {
-	m_Http = wxT("Content-Type: ") + ext + wxT("\r\n");
+	m_Http = "Content-Type: " + ext + "\r\n";
 
 	time_t t = time(NULL);
 	char tmp[255];
 	strftime(tmp, 255, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
-	m_Http += wxT("Last-Modified: ") + wxString(char2unicode(tmp)) + wxT("\r\n");
+	m_Http += "Last-Modified: " + wxString(char2unicode(tmp)) + "\r\n";
 
-	m_Http += wxT("ETag: ") + MD5Sum(char2unicode(tmp)).GetHash() + wxT("\r\n");
+	m_Http += "ETag: " + MD5Sum(char2unicode(tmp)).GetHash() + "\r\n";
 }
 
 CFileImage::CFileImage(const wxString& name) : CAnyImage(0)
@@ -983,7 +938,7 @@ CFileImage::CFileImage(const wxString& name) : CAnyImage(0)
 	m_size = 0;
 	m_name = name;
 #ifdef __WINDOWS__
-	wxFFile fis(m_name, wxT("rb"));
+	wxFFile fis(m_name, "rb");
 #else
 	wxFFile fis(m_name);
 #endif
@@ -997,10 +952,10 @@ CFileImage::CFileImage(const wxString& name) : CAnyImage(0)
 			printf("CFileImage: file %s have zero length\n", (const char *)unicode2char(m_name));
 		}
 		wxString ext = m_name.Right(3).MakeLower();
-		if ( ext == wxT("css") ) {
-			SetHttpType(wxT("text/css"));
+		if ( ext == "css" ) {
+			SetHttpType("text/css");
 		} else {
-			SetHttpType(wxT("image/") + ext);
+			SetHttpType("image/" + ext);
 		}
 	} else {
 		printf("CFileImage: failed to open %s\n", (const char *)unicode2char(m_name));
@@ -1142,11 +1097,17 @@ CDynPngImage::CDynPngImage(int w, int h) : CAnyImage(w, h)
 	// Allocate array of "row pointers" - libpng need it in this form
 	// Fill it also with the image data
 	//
-	m_img_data = new png_byte[3*m_width*m_height];
-	memset(m_img_data, 0, 3*m_width*m_height);
+	const size_t img_size = static_cast<size_t>(3) *
+		static_cast<size_t>(m_width) *
+		static_cast<size_t>(m_height);
+	m_img_data = new png_byte[img_size];
+	memset(m_img_data, 0, img_size);
 	m_row_ptrs = new png_bytep [m_height];
 	for (int i = 0; i < m_height;i++) {
-		m_row_ptrs[i] = &m_img_data[3*m_width*i];
+		m_row_ptrs[i] = &m_img_data[
+			static_cast<size_t>(3) *
+			static_cast<size_t>(m_width) *
+			static_cast<size_t>(i)];
 	}
 
 }
@@ -1190,7 +1151,7 @@ CDynProgressImage::CDynProgressImage(int width, int height, wxString &tmpl, Down
 	CDynPngImage(width, height),
 	m_modifiers(height)
 {
-	m_name = wxT("dyn_") + m_file->sFileHash + wxT(".png");
+	m_name = "dyn_" + m_file->sFileHash + ".png";
 }
 
 CDynProgressImage::~CDynProgressImage()
@@ -1200,7 +1161,7 @@ CDynProgressImage::~CDynProgressImage()
 wxString CDynProgressImage::GetHTML()
 {
 	// template contain %s (name) %d (width) %s (alt)
-	return (CFormat(m_template) % m_name % m_width % wxT("Progress bar")).GetString();
+	return (CFormat(m_template) % m_name % m_width % "Progress bar").GetString();
 }
 
 void CDynProgressImage::DrawImage()
@@ -1234,7 +1195,7 @@ CDynProgressImage::CDynProgressImage(int width, int height, wxString &tmpl, Down
 	CAnyImage(width, height),
 	CProgressImage(width, height, tmpl, file)
 {
-	m_name = wxT("dyn_") + m_file->sFileHash + wxT(".png");
+	m_name = "dyn_" + m_file->sFileHash + ".png";
 
 }
 
@@ -1242,9 +1203,9 @@ CDynProgressImage::CDynProgressImage(int width, int height, wxString &tmpl, Down
 wxString CDynProgressImage::GetHTML()
 {
 	static wxChar *progresscolor[12] = {
-		wxT("transparent.gif"), wxT("black.gif"), wxT("yellow.gif"), wxT("red.gif"),
-		wxT("blue1.gif"),       wxT("blue2.gif"), wxT("blue3.gif"),  wxT("blue4.gif"),
-		wxT("blue5.gif"),       wxT("blue6.gif"), wxT("green.gif"),  wxT("greenpercent.gif") };
+		"transparent.gif", "black.gif", "yellow.gif", "red.gif",
+		"blue1.gif",       "blue2.gif", "blue3.gif",  "blue4.gif",
+		"blue5.gif",       "blue6.gif", "green.gif",  "greenpercent.gif" };
 
 	CreateSpan();
 
@@ -1273,7 +1234,7 @@ wxString CDynProgressImage::GetHTML()
 				}
 			}
 			str += (CFormat(m_template) % progresscolor[color_idx]
-						% (i - lastindex) % wxString(progresscolor[color_idx]).BeforeLast(wxT('.'))).GetString();
+						% (i - lastindex) % wxString(progresscolor[color_idx]).BeforeLast('.')).GetString();
 			lastindex = i;
 			lastcolor = m_ColorLine[i];
 		}
@@ -1385,7 +1346,7 @@ CDynStatisticImage::CDynStatisticImage(int height, bool scale1024, CStatsData *d
 	m_scale1024 = scale1024;
 
 	// actual name doesn't matter, just make it unique
-	m_name = CFormat(wxT("dyn_%p_stat.png")) % data;
+	m_name = CFormat("dyn_%p_stat.png") % data;
 
 	m_num_font_w_size = 8;
 	m_num_font_h_size = 16;
@@ -1432,7 +1393,7 @@ CDynStatisticImage::CDynStatisticImage(int height, bool scale1024, CStatsData *d
 		set_rgb_color_val(m_row_bg_ptrs[m_y_axis_size - 1]+3*j, axis_color, 0);
 	}
 
-	// horisontal grid
+	// horizontal grid
 	int v_grid_size = m_y_axis_size / 4;
 	for(int i = m_y_axis_size - v_grid_size; i >= v_grid_size; i -= v_grid_size) {
 		png_bytep u_row = m_row_bg_ptrs[i];
@@ -1444,9 +1405,9 @@ CDynStatisticImage::CDynStatisticImage(int height, bool scale1024, CStatsData *d
 	}
 
 	//
-	// Pre-create masks for digits
+	// Pre-create masks for digits 0-9 and unit prefixes K/M/G/T.
 	//
-	for(int i = 0; i < 10; i++) {
+	for(int i = 0; i < 14; i++) {
 		m_digits[i] = new CNumImageMask(i, m_num_font_w_size, m_num_font_h_size);
 	}
 }
@@ -1455,7 +1416,7 @@ CDynStatisticImage::~CDynStatisticImage()
 {
 	delete [] m_row_bg_ptrs;
 	delete [] m_background;
-	for(int i = 0; i < 10; i++) {
+	for(int i = 0; i < 14; i++) {
 		delete m_digits[i];
 	}
 }
@@ -1463,7 +1424,8 @@ CDynStatisticImage::~CDynStatisticImage()
 void CDynStatisticImage::DrawImage()
 {
 	// copy background first
-	memcpy(m_img_data, m_background, m_width*m_height*3);
+	memcpy(m_img_data, m_background,
+		static_cast<size_t>(m_width) * m_height * 3u);
 
 	//
 	// Now graph itself
@@ -1498,7 +1460,7 @@ void CDynStatisticImage::DrawImage()
 	m_digits[0]->Apply(m_row_ptrs, 3*img_delta+2*m_num_font_w_size, m_y_axis_size-m_num_font_h_size-5);
 
 	//
-	// When data is scaled down, axis are scaled UP and viceversa
+	// When data is scaled down, axis are scaled UP and vice-versa
 	int y_axis_max = m_y_axis_size;
 	if ( m_scale_down != 1 ) {
 		y_axis_max *= m_scale_down;
@@ -1506,22 +1468,58 @@ void CDynStatisticImage::DrawImage()
 		y_axis_max /= m_scale_up;
 	}
 
-	// X---
-	if ( y_axis_max > 999 ) {
-		m_digits[y_axis_max / 1000]->Apply(m_row_ptrs, img_delta, img_delta);
+	// Render the y-axis maximum into the four pre-sized digit cells. When
+	// the value fits in 4 digits we render it as-is; above 9999 we collapse
+	// to a 3-digit number plus a K/M/G/T suffix glyph in the fourth cell
+	// so the label remains within the pre-sized margin.
+	int label_value = y_axis_max;
+	int suffix_idx = -1;
+	if (label_value >= 10000) {
+		// Scale by 1000 until the value fits in 3 digits. suffix_idx
+		// maps directly into m_digits[]: 10=K, 11=M, 12=G, 13=T.
+		int scale_steps = 0;
+		while (label_value >= 1000) {
+			label_value /= 1000;
+			scale_steps++;
+		}
+		// Clamp at the largest suffix we have. Anything beyond ~10^15
+		// (i.e. needing more than 'T') is well outside aMule's range.
+		if (scale_steps > 4) {
+			scale_steps = 4;
+			label_value = 999;
+		}
+		suffix_idx = 10 + (scale_steps - 1);
 	}
-	// -X--
-	if ( y_axis_max > 99 ) {
-		m_digits[(y_axis_max % 1000) / 100]->Apply(m_row_ptrs,
-			2*img_delta+m_num_font_w_size, img_delta);
+
+	// Cell origins, left to right: (n+1)*img_delta + n*m_num_font_w_size.
+	const int cell0_x =   img_delta;
+	const int cell1_x = 2*img_delta +   m_num_font_w_size;
+	const int cell2_x = 3*img_delta + 2*m_num_font_w_size;
+	const int cell3_x = 4*img_delta + 3*m_num_font_w_size;
+
+	if (suffix_idx >= 0) {
+		// 3 digits + suffix. label_value is in [1, 999] after scaling.
+		if (label_value > 99) {
+			m_digits[(label_value / 100) % 10]->Apply(m_row_ptrs, cell0_x, img_delta);
+		}
+		if (label_value > 9) {
+			m_digits[(label_value % 100) / 10]->Apply(m_row_ptrs, cell1_x, img_delta);
+		}
+		m_digits[label_value % 10]->Apply(m_row_ptrs, cell2_x, img_delta);
+		m_digits[suffix_idx]->Apply(m_row_ptrs, cell3_x, img_delta);
+	} else {
+		// Four digits, no suffix. label_value < 10000 here.
+		if (label_value > 999) {
+			m_digits[(label_value / 1000) % 10]->Apply(m_row_ptrs, cell0_x, img_delta);
+		}
+		if (label_value > 99) {
+			m_digits[(label_value % 1000) / 100]->Apply(m_row_ptrs, cell1_x, img_delta);
+		}
+		if (label_value > 9) {
+			m_digits[(label_value % 100) / 10]->Apply(m_row_ptrs, cell2_x, img_delta);
+		}
+		m_digits[label_value % 10]->Apply(m_row_ptrs, cell3_x, img_delta);
 	}
-	// --X-
-	if ( y_axis_max > 9 ) {
-		m_digits[(y_axis_max % 100) / 10]->Apply(m_row_ptrs,
-			3*img_delta+2*m_num_font_w_size, img_delta);
-	}
-	// ---X
-	m_digits[y_axis_max % 10]->Apply(m_row_ptrs, 4*img_delta+3*m_num_font_w_size, img_delta);
 
 	int prev_data = m_data->GetFirst();
 	if ( m_scale_down != 1 ) {
@@ -1576,14 +1574,19 @@ unsigned char *CDynStatisticImage::RequestData(int &size)
 
 wxString CDynStatisticImage::GetHTML()
 {
-	return wxEmptyString;
+	return "";
 }
 
 //
 // Imprint numbers on generated png's
 //
-//                                                 0     1     2     3     4     5     6     7     8     9
-const int CNumImageMask::m_num_to_7_decode[] = {0x77, 0x24, 0x5d, 0x6d, 0x2e, 0x5d, 0x7a, 0x25, 0x7f, 0x2f};
+// 7-segment encodings. Segment numbering matches the comment block in front
+// of DrawSegment below: 0=top, 1=top-left, 2=top-right, 3=middle, 4=bottom-left,
+// 5=bottom-right, 6=bottom. Indices 0-9 are digits. Indices 10-13 are the
+// unit-prefix glyphs K, M, G, T used when the y-axis maximum exceeds 9999;
+// K and M are stylised approximations (7-segment has no clean K/M).
+//                                                 0     1     2     3     4     5     6     7     8     9     K     M     G     T
+const int CNumImageMask::m_num_to_7_decode[] = {0x77, 0x24, 0x5d, 0x6d, 0x2e, 0x6b, 0x7a, 0x25, 0x7f, 0x2f, 0x3a, 0x37, 0x7b, 0x5a};
 
 CNumImageMask::CNumImageMask(int number, int width, int height)
 {
@@ -1614,14 +1617,14 @@ CNumImageMask::~CNumImageMask()
 	delete [] m_row_mask_ptrs;
 }
 
-void CNumImageMask::Apply(png_bytep *image, int offx, int offy)
+void CNumImageMask::Apply(png_bytep *image, int off_x, int off_y)
 {
-	offx *= 3;
+	off_x *= 3;
 	for(int i = 0; i < m_height; i++) {
-		png_bytep img_row = image[offy + i];
+		png_bytep img_row = image[off_y + i];
 		png_bytep num_row = m_row_mask_ptrs[i];
 		for(int j = 0; j < m_width*3; j++) {
-			img_row[offx + j] |= num_row[j];
+			img_row[off_x + j] |= num_row[j];
 		}
 	}
 }
@@ -1634,11 +1637,11 @@ void CNumImageMask::DrawHorzLine(int off)
 	}
 }
 
-void CNumImageMask::DrawVertLine(int offx, int offy)
+void CNumImageMask::DrawVertLine(int off_x, int off_y)
 {
 	for(int i = 0; i < m_v_segsize; i++) {
-		png_bytep m_row = m_row_mask_ptrs[offy*(m_v_segsize-1)+i];
-		int x_idx = offx*(m_h_segsize-1)*3;
+		png_bytep m_row = m_row_mask_ptrs[off_y*(m_v_segsize-1)+i];
+		int x_idx = off_x*(m_h_segsize-1)*3;
 		m_row[x_idx] = m_row[x_idx+1] = m_row[x_idx+2] = 0xff;
 	}
 }
@@ -1735,18 +1738,18 @@ CAnyImage *CImageLib::GetImage(const wxString &name)
  * Script-based webserver
  */
 CScriptWebServer::CScriptWebServer(CamulewebApp *webApp, const wxString& templateDir)
-	: CWebServerBase(webApp, templateDir), m_wwwroot(templateDir)
+	: CWebServerBase(webApp, templateDir), m_www_root(templateDir)
 {
-	wxString img_tmpl(wxT("<img src=\"%s\" height=\"20\" width=\"%d\" alt=\"%s\">"));
+	wxString img_tmpl("<img src=\"%s\" height=\"20\" width=\"%d\" alt=\"%s\">");
 	m_DownloadFileInfo.LoadImageParams(img_tmpl, 200, 20);
 
-	if ( ::wxFileExists(wxFileName(m_wwwroot, wxT("index.html")).GetFullPath()) ) {
-		m_index = wxT("index.html");
-	} else if ( ::wxFileExists(wxFileName(m_wwwroot, wxT("index.php")).GetFullPath()) ) {
-		m_index = wxT("index.php");
+	if ( ::wxFileExists(wxFileName(m_www_root, "index.html").GetFullPath()) ) {
+		m_index = "index.html";
+	} else if ( ::wxFileExists(wxFileName(m_www_root, "index.php").GetFullPath()) ) {
+		m_index = "index.php";
 	} else {
 		webInterface->Show(_("Index file not found: ") +
-			wxFileName(m_wwwroot, wxT("index.{html,php}")).GetFullPath() + wxT("\n"));
+			wxFileName(m_www_root, "index.{html,php}").GetFullPath() + "\n");
 	}
 }
 
@@ -1828,7 +1831,7 @@ CSession *CScriptWebServer::CheckLoggedin(ThreadData &Data)
 			m_sessions.erase(Data.SessionID);
 			session = 0;
 		} else {
-			if ( session->m_loggedin ) {
+			if ( session->m_logged_in ) {
 				Print(_("Session ok, logged in\n"));
 			} else {
 				Print(_("Session ok, not logged in\n"));
@@ -1844,7 +1847,7 @@ CSession *CScriptWebServer::CheckLoggedin(ThreadData &Data)
 		}
 		session = &m_sessions[Data.SessionID];
 		session->m_last_access = curr_time;
-		session->m_loggedin = false;
+		session->m_logged_in = false;
 		Print(_("Session created - requesting login\n"));
 	}
 	Data.parsedURL.ConvertParams(session->m_get_vars);
@@ -1860,7 +1863,7 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 	// Strip out any path-component to prevent information leakage.
 	wxString filename = wxFileName(Data.parsedURL.File()).GetFullName();
 
-	Print(_("Processing request [original]: ") + filename + wxT("\n"));
+	Print(_("Processing request [original]: ") + filename + "\n");
 
 	if ( filename.Length() == 0 ) {
 		filename = m_index;
@@ -1869,33 +1872,33 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 	CSession *session = CheckLoggedin(Data);
 
 	session->m_vars["login_error"] = "";
-	if ( !session->m_loggedin ) {
-		filename = wxT("login.php");
+	if ( !session->m_logged_in ) {
+		filename = "login.php";
 
-		wxString PwStr(Data.parsedURL.Param(wxT("pass")));
+		wxString PwStr(Data.parsedURL.Param("pass"));
 		if (webInterface->m_AdminPass.IsEmpty() && webInterface->m_GuestPass.IsEmpty()) {
 			session->m_vars["login_error"] = "No password specified, login will not be allowed.";
 			Print(_("No password specified, login will not be allowed."));
 		} else if ( PwStr.Length() ) {
 			Print(_("Checking password\n"));
-			session->m_loggedin = false;
+			session->m_logged_in = false;
 
 			CMD4Hash PwHash;
 			if (!PwHash.Decode(MD5Sum(PwStr).GetHash())) {
 				Print(_("Password hash invalid\n"));
-				session->m_vars["login_error"] = "Invalid password hash, please report on http://forum.amule.org";
+				session->m_vars["login_error"] = "Invalid password hash, please report at https://github.com/amule-org/amule/issues";
 			} else if ( PwHash == webInterface->m_AdminPass ) {
-				session->m_loggedin = true;
+				session->m_logged_in = true;
 				// m_vars is map<string, string> - so _() will not work here !
 				session->m_vars["guest_login"] = "0";
 			} else if ( PwHash == webInterface->m_GuestPass ) {
-				session->m_loggedin = true;
+				session->m_logged_in = true;
 				session->m_vars["guest_login"] = "1";
 			} else {
 				session->m_vars["login_error"] = "Password incorrect, please try again.";
 			}
 
-			if ( session->m_loggedin ) {
+			if ( session->m_logged_in ) {
 				filename = m_index;
 				Print(_("Password ok\n"));
 			} else {
@@ -1909,39 +1912,39 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 		// if logged in, but requesting login page again,
 		// means logout command
 		//
-		if ( filename == wxT("login.php") ) {
+		if ( filename == "login.php" ) {
 			Print(_("Logout requested\n"));
-			session->m_loggedin = false;
+			session->m_logged_in = false;
 		}
 	}
 
-	Print(_("Processing request [redirected]: ") + filename + wxT("\n"));
+	Print(_("Processing request [redirected]: ") + filename + "\n");
 
 	session->m_vars["auto_refresh"] = (const char *)unicode2char(
-		wxString(CFormat(wxT("%d")) % webInterface->m_PageRefresh));
+		wxString(CFormat("%d") % webInterface->m_PageRefresh));
 	session->m_vars["content_type"] = "text/html";
 
-	wxString req_file(wxFileName(m_wwwroot, filename).GetFullPath());
-	if (req_file.EndsWith(wxT(".html"))) {
+	wxString req_file(wxFileName(m_www_root, filename).GetFullPath());
+	if (req_file.EndsWith(".html")) {
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
-	} else if (req_file.EndsWith(wxT(".php"))) {
+	} else if (req_file.EndsWith(".php")) {
 		httpOut = ProcessPhpRequest(unicode2char(req_file), session, httpOutLen);
-	} else if (req_file.EndsWith(wxT(".css"))) {
+	} else if (req_file.EndsWith(".css")) {
 		session->m_vars["content_type"] = "text/css";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
-	} else if (req_file.EndsWith(wxT(".js"))) {
+	} else if (req_file.EndsWith(".js")) {
 		session->m_vars["content_type"] = "text/javascript";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
-	} else if (	req_file.EndsWith(wxT(".dtd"))
-				|| req_file.EndsWith(wxT(".xsd"))
-				|| req_file.EndsWith(wxT(".xsl"))) {
+	} else if (	req_file.EndsWith(".dtd")
+				|| req_file.EndsWith(".xsd")
+				|| req_file.EndsWith(".xsl")) {
 		session->m_vars["content_type"] = "text/xml";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
-	} else if (req_file.EndsWith(wxT(".appcache"))
-		   || req_file.EndsWith(wxT(".manifest"))) {
+	} else if (req_file.EndsWith(".appcache")
+		   || req_file.EndsWith(".manifest")) {
 		session->m_vars["content_type"] = "text/cache-manifest";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
-	} else if (req_file.EndsWith(wxT(".json"))) {
+	} else if (req_file.EndsWith(".json")) {
 		session->m_vars["content_type"] = "application/json";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
 	} else {
@@ -1975,7 +1978,7 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 	}
 }
 
-CNoTemplateWebServer::CNoTemplateWebServer(CamulewebApp *webApp) : CScriptWebServer(webApp, wxEmptyString)
+CNoTemplateWebServer::CNoTemplateWebServer(CamulewebApp *webApp) : CScriptWebServer(webApp, "")
 {
 }
 
@@ -2004,7 +2007,7 @@ void CNoTemplateWebServer::ProcessURL(ThreadData Data)
 				"<li>If you are installing by using a precompiled package, you may need to contact the package maintainer </li>"
 			"</ul>"
 			"<p>For more information please visit</p>"
-			"<p><a href=\"http://www.amule.org\">aMule main site</a> or <a href=\"http://forum.amule.org\">aMule forums</a></p>"
+			"<p><a href=\"https://github.com/amule-org/amule\">aMule on GitHub</a> or <a href=\"https://github.com/amule-org/amule/discussions\">aMule Discussions</a></p>"
 		"</body>"
 	"</html>";
 

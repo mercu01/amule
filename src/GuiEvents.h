@@ -45,8 +45,7 @@ class CLibSocketServer;
 class CMuleUDPSocket;
 
 
-DECLARE_LOCAL_EVENT_TYPE(MULE_EVT_NOTIFY, -1)
-
+wxDECLARE_EVENT(MULE_EVT_NOTIFY, wxEvent);
 
 /**
  * This namespaces contains a number of functions and classes
@@ -87,6 +86,8 @@ namespace MuleNotify
 	void SharedFilesRemoveAllFiles();
 	void SharedFilesShowFileList();
 	void SharedFilesUpdateItem(CKnownFile* file);
+	void SharedFilesBeginBulkUpdate();
+	void SharedFilesEndBulkUpdate();
 
 	void DownloadCtrlUpdateItem(const void* item);
 	void SourceCtrlUpdateSource(uint32 source, SourceItemType type);
@@ -454,11 +455,9 @@ using MuleNotify::CMuleGUIEvent;
 //! The event-handler type that takes a CMuleGUIEvent.
 typedef void (wxEvtHandler::*MuleNotifyEventFunction)(CMuleGUIEvent&);
 
-//! Event-handler for completed hashings of new shared files and partfiles.
+//! Event-handler for cross-thread GUI notification events.
 #define EVT_MULE_NOTIFY(func) \
-	DECLARE_EVENT_TABLE_ENTRY(MULE_EVT_NOTIFY, -1, -1, \
-	(wxObjectEventFunction) (wxEventFunction) \
-	wxStaticCastEvent(MuleNotifyEventFunction, &func), (wxObject*) NULL),
+	wx__DECLARE_EVT0(MULE_EVT_NOTIFY, wxEVENT_HANDLER_CAST(MuleNotifyEventFunction, func))
 
 
 
@@ -470,6 +469,8 @@ typedef void (wxEvtHandler::*MuleNotifyEventFunction)(CMuleGUIEvent&);
 #define Notify_SharedFilesShowFileList()		MuleNotify::DoNotify(&MuleNotify::SharedFilesShowFileList)
 #define Notify_SharedFilesSort()			MuleNotify::DoNotify(&MuleNotify::SharedFilesSort)
 #define Notify_SharedFilesUpdateItem(file)		MuleNotify::DoNotify(&MuleNotify::SharedFilesUpdateItem, file)
+#define Notify_SharedFilesBeginBulkUpdate()		MuleNotify::DoNotify(&MuleNotify::SharedFilesBeginBulkUpdate)
+#define Notify_SharedFilesEndBulkUpdate()		MuleNotify::DoNotify(&MuleNotify::SharedFilesEndBulkUpdate)
 
 // download ctrl
 #define Notify_DownloadCtrlUpdateItem(ptr)		MuleNotify::DoNotify(&MuleNotify::DownloadCtrlUpdateItem, ptr)
@@ -530,7 +531,7 @@ typedef void (wxEvtHandler::*MuleNotifyEventFunction)(CMuleGUIEvent&);
 #define Notify_ServersURLChanged(url)			MuleNotify::DoNotify(&MuleNotify::ServersURLChanged, url)
 
 // Partfile conversion: Core -> GUI
-#define Notify_ConvertUpdateProgress(val, text)		Notify_ConvertUpdateProgressFull(val, text, wxEmptyString)
+#define Notify_ConvertUpdateProgress(val, text)		Notify_ConvertUpdateProgressFull(val, text, "")
 #define Notify_ConvertUpdateProgressFull(val, text, hdr) MuleNotify::DoNotify(&MuleNotify::ConvertUpdateProgress, val, text, hdr)
 #define Notify_ConvertUpdateJobInfo(info)		MuleNotify::DoNotify(&MuleNotify::ConvertUpdateJobInfo, info)
 #define Notify_ConvertRemoveJobInfo(id)			MuleNotify::DoNotify(&MuleNotify::ConvertRemoveJobInfo, id)

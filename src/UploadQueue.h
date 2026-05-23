@@ -28,6 +28,7 @@
 
 #include "ClientRef.h"		// Needed for CClientRefList
 #include "MD4Hash.h"		// Needed for CMD4Hash
+#include <wx/thread.h>		// Needed for wxMutex
 
 // Experimental extended upload queue population
 //
@@ -62,6 +63,9 @@ public:
 	const CClientRefList& GetWaitingList() const { return m_waitinglist; }
 	const CClientRefList& GetUploadingList() const { return m_uploadinglist; }
 
+	// Thread-safe access for disk I/O thread — caller must hold the returned lock for the duration of iteration
+	wxMutex& GetUploadingListLock() { return m_uploadingListMutex; }
+
 	CUpDownClient* GetWaitingClientByIP_UDP(uint32 dwIP, uint16 nUDPPort, bool bIgnorePortOnUniqueIP, bool* pbMultipleIPs = NULL);
 
 	uint16	SuspendUpload(const CMD4Hash &, bool terminate);
@@ -70,7 +74,7 @@ public:
 
 private:
 	void	RemoveFromWaitingQueue(CClientRefList::iterator pos);
-	uint16	GetMaxSlots() const;
+	uint32	GetMaxSlots() const;
 	uint16	GetMaxUpload() const;
 	void	AddUpNextClient(CUpDownClient* directadd = 0);
 	bool	IsSuspended(const CMD4Hash& hash) { return suspendedUploadsSet.find(hash) != suspendedUploadsSet.end(); }
@@ -78,6 +82,7 @@ private:
 
 	CClientRefList m_waitinglist;
 	CClientRefList m_uploadinglist;
+	wxMutex        m_uploadingListMutex;	// guards m_uploadinglist for disk I/O thread access
 
 #if EXTENDED_UPLOADQUEUE
 	CClientRefList m_possiblyWaitingList;

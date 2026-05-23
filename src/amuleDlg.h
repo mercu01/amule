@@ -107,7 +107,7 @@ class CamuleDlg : public wxFrame
 public:
 	CamuleDlg(
 		wxWindow *pParent = NULL,
-		const wxString &title = wxEmptyString,
+		const wxString &title = "",
 		wxPoint where = wxDefaultPosition,
 		wxSize dlg_size = wxSize(DEFAULT_SIZE_X,DEFAULT_SIZE_Y));
 	~CamuleDlg();
@@ -116,7 +116,7 @@ public:
 	void AddServerMessageLine(wxString& message);
 	void ResetLog(int id);
 
-	void ShowUserCount(const wxString& info = wxEmptyString);
+	void ShowUserCount(const wxString& info = "");
 	void ShowConnectionState(bool skinChanged = false);
 	void ShowTransferRate();
 
@@ -199,6 +199,7 @@ protected:
 	void OnPrefButton(wxCommandEvent& ev);
 	void OnImportButton(wxCommandEvent& ev);
 	void OnMinimize(wxIconizeEvent& evt);
+	void OnShow(wxShowEvent& evt);
 	void OnBnClickedFast(wxCommandEvent& evt);
 	void OnGUITimer(wxTimerEvent& evt);
 	void OnMainGUISizeChange(wxSizeEvent& evt);
@@ -215,6 +216,19 @@ private:
 	bool m_BlinkMessages;
 	int m_CurrentBlinkBitmap;
 	uint32 m_last_iconizing;
+
+public:
+	// Track iconize state from wxIconizeEvent::IsIconized(), which is
+	// reliable across platforms — unlike wxFrame::IsIconized() which
+	// can return false on wxGTK after a minimize-button click while
+	// the OS still has the window iconized. Tray menu and DoShowHide
+	// consult this to decide whether the window is "visible to the
+	// user" so the "Show aMule"/"Hide aMule" label and the click
+	// action stay in sync with reality.
+	bool IsTrayLogicallyIconized() const { return m_iconized_logical; }
+
+private:
+	bool m_iconized_logical = false;
 	wxFileName m_skinFileName;
 	std::vector<wxString> m_clientSkinNames;
 	bool m_GeoIPavailable;
@@ -238,7 +252,7 @@ private:
 	void SetMessagesTool();
 	void OnKeyPressed(wxKeyEvent& evt);
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 #endif

@@ -74,13 +74,16 @@ Version 2 of AICH also supports 32bit identifiers to support large files, check 
 
 #include <deque>
 #include <set>
+#include <unordered_set>
+
+#include <wx/thread.h>		// Needed for wxMutex
 
 #include "Types.h"
 #include "ClientRef.h"
 
 #define HASHSIZE			20
-#define KNOWN2_MET_FILENAME		wxT("known2_64.met")
-#define OLD_KNOWN2_MET_FILENAME		wxT("known2.met")
+#define KNOWN2_MET_FILENAME		"known2_64.met"
+#define OLD_KNOWN2_MET_FILENAME		"known2.met"
 #define KNOWN2_MET_VERSION		0x02
 
 enum EAICHStatus {
@@ -127,9 +130,22 @@ public:
 	void Read(uint8_t* data)		{ memcpy(m_abyBuffer, data, HASHSIZE); }
 	wxString GetString() const;
 	uint8_t* GetRawHash()			{ return m_abyBuffer; }
+	const uint8_t* GetRawHash() const	{ return m_abyBuffer; }
 	static uint32 GetHashSize()		{ return HASHSIZE;}
 	unsigned int DecodeBase32(const wxString &base32);
 };
+
+namespace std {
+template <> struct hash<CAICHHash> {
+	size_t operator()(const CAICHHash& h) const noexcept {
+		// Root hashes already have ~uniform bit distribution; any 8
+		// contiguous bytes make a perfectly fine size_t-sized hash.
+		size_t v;
+		memcpy(&v, h.GetRawHash(), sizeof(v));
+		return v;
+	}
+};
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////
 ///CAICHHashAlgo
@@ -191,6 +207,8 @@ protected:
 ///CAICHUntrustedHashs
 class CAICHUntrustedHash {
 public:
+	CAICHUntrustedHash() = default;
+	CAICHUntrustedHash(const CAICHUntrustedHash&) = default;
 	CAICHUntrustedHash& operator=(const CAICHUntrustedHash& k1)
 	{
 		m_adwIpsSigning = k1.m_adwIpsSigning;
@@ -212,6 +230,7 @@ public:
 		m_nPart = 0;
 		m_pPartFile = NULL;
 	}
+	CAICHRequestedData(const CAICHRequestedData&) = default;
 	CAICHRequestedData& operator=(const CAICHRequestedData& k1)
 	{
 		m_nPart = k1.m_nPart;
@@ -271,6 +290,23 @@ public:
 	void DbgTest();
 
 	void SetOwner(CKnownFile* owner)	{ m_pOwner = owner; }
+
+	// Drop the in-memory dedup cache used by SaveHashSet. Call after anything
+	// mutates known2.met outside SaveHashSet (e.g. CAICHSyncTask's corruption
+	// truncation path) so the cache doesn't hold ghost entries.
+	static void InvalidateRootHashCache();
+
+private:
+	// Cache of every root hash currently stored in known2.met. Populated
+	// lazily on first SaveHashSet call (or refilled after invalidation).
+	// Replaces the per-call linear file walk that made SaveHashSet O(N)
+	// per call / O(N^2) over a bulk-hash batch.
+	static wxMutex			s_rootHashCacheMutex;
+	static std::unordered_set<CAICHHash> s_rootHashCache;
+	static bool			s_rootHashCacheLoaded;
+
+	// Caller must hold s_rootHashCacheMutex.
+	static void LoadRootHashCacheLocked();
 };
 
 #endif  //__SHAHAHSET_H__

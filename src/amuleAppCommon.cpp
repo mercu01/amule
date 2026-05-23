@@ -35,6 +35,11 @@
 #include <wx/config.h>			// Do_not_auto_remove (win32)
 #include <wx/fileconf.h>
 
+#ifdef __WXGTK__
+#include <stdlib.h>				// Needed for getenv (IsWaylandSession)
+#include <string.h>				// Needed for strcmp (IsWaylandSession)
+#endif
+
 #include "amule.h"			// Interface declarations.
 #include <common/Format.h>		// Needed for CFormat
 #include "CFile.h"			// Needed for CFile
@@ -57,18 +62,19 @@ CamuleAppCommon::CamuleAppCommon()
 	m_singleInstance = NULL;
 	ec_config = false;
 	m_geometryEnabled = false;
+	m_disableFatal = false;
 	if (IsRemoteGui()) {
-		m_appName		= wxT("aMuleGUI");
-		m_configFile	= wxT("remote.conf");
-		m_logFile		= wxT("remotelogfile");
+		m_appName		= "aMuleGUI";
+		m_configFile	= "remote.conf";
+		m_logFile		= "remotelogfile";
 	} else {
-		m_configFile	= wxT("amule.conf");
-		m_logFile		= wxT("logfile");
+		m_configFile	= "amule.conf";
+		m_logFile		= "logfile";
 
 		if (IsDaemon()) {
-			m_appName	= wxT("aMuleD");
+			m_appName	= "aMuleD";
 		} else {
-			m_appName	= wxT("aMule");
+			m_appName	= "aMule";
 		}
 	}
 }
@@ -82,19 +88,51 @@ CamuleAppCommon::~CamuleAppCommon()
 #endif
 }
 
+#ifdef __WXGTK__
+bool CamuleAppCommon::IsWaylandSession()
+{
+	// Explicit GDK_BACKEND=x11 forces the app onto XWayland — OS
+	// minimize events come through reliably, so treat it as X11.
+	// This is the documented user workaround for "I want MinToTray
+	// on Wayland": launch with `GDK_BACKEND=x11 amule`. Same trick
+	// Discord users adopt to get their tray icon back on Wayland.
+	if (const char* gb = getenv("GDK_BACKEND")) {
+		if (strncmp(gb, "x11", 3) == 0) {
+			return false;
+		}
+	}
+	// WAYLAND_DISPLAY is set by Wayland servers to the socket name
+	// (e.g. "wayland-0") for any client running under that session.
+	// XDG_SESSION_TYPE is the systemd-logind hint and is also set
+	// to "wayland" on every common distro. Either non-empty match
+	// is treated as a Wayland session.
+	if (const char* wd = getenv("WAYLAND_DISPLAY")) {
+		if (wd[0] != '\0') {
+			return true;
+		}
+	}
+	if (const char* st = getenv("XDG_SESSION_TYPE")) {
+		if (strcmp(st, "wayland") == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+#endif
+
 void CamuleAppCommon::RefreshSingleInstanceChecker()
 {
 #if defined(__WXMAC__) && defined(AMULE_DAEMON)
 	//#warning TODO: fix wxSingleInstanceChecker for amuled on Mac (wx link problems)
 #else
 	delete m_singleInstance;
-	m_singleInstance = new wxSingleInstanceChecker(wxT("muleLock"), thePrefs::GetConfigDir());
+	m_singleInstance = new wxSingleInstanceChecker("muleLock", thePrefs::GetConfigDir());
 #endif
 }
 
 void CamuleAppCommon::AddLinksFromFile()
 {
-	const wxString fullPath = thePrefs::GetConfigDir() + wxT("ED2KLinks");
+	const wxString fullPath = thePrefs::GetConfigDir() + "ED2KLinks";
 	if (!wxFile::Exists(fullPath)) {
 		return;
 	}
@@ -104,33 +142,43 @@ void CamuleAppCommon::AddLinksFromFile()
 
 	wxTextFile file(fullPath);
 	if ( file.Open() ) {
+		unsigned failed = 0;
 		for ( unsigned int i = 0; i < file.GetLineCount(); i++ ) {
 			wxString line = file.GetLine( i ).Strip( wxString::both );
 
 			if ( !line.IsEmpty() ) {
 				// Special case! used by a secondary running mule to raise this one.
-				if (line == wxT("RAISE_DIALOG")) {
+				if (line == "RAISE_DIALOG") {
 					Notify_ShowGUI();
 					continue;
 				}
 				unsigned long category = 0;
-				if (line.AfterLast(wxT(':')).ToULong(&category) == true) {
-					line = line.BeforeLast(wxT(':'));
+				if (line.AfterLast(':').ToULong(&category) == true) {
+					line = line.BeforeLast(':');
 				} else { // If ToULong returns false the category still can have been changed!
 						 // This is fixed in wx 2.9
 					category = 0;
 				}
-				theApp->downloadqueue->AddLink(line, category);
+				if (!theApp->downloadqueue->AddLink(line, category)) {
+					++failed;
+				}
 			}
 		}
 
 		file.Close();
+
+		if (failed > 0) {
+			theApp->ShowAlert(
+				CFormat(wxPLURAL("Could not add %u link from ED2KLinks file (see log for details).",
+				                 "Could not add %u links from ED2KLinks file (see log for details).", failed)) % failed,
+				_("ERROR"), wxOK | wxICON_ERROR);
+		}
 	} else {
 		AddLogLineNS(_("Failed to open ED2KLinks file."));
 	}
 
 	// Delete the file.
-	wxRemoveFile(thePrefs::GetConfigDir() + wxT("ED2KLinks"));
+	wxRemoveFile(thePrefs::GetConfigDir() + "ED2KLinks");
 }
 
 
@@ -139,10 +187,10 @@ wxString CamuleAppCommon::CreateMagnetLink(const CAbstractFile *f)
 {
 	CMagnetURI uri;
 
-	uri.AddField(wxT("dn"), f->GetFileName().Cleanup(false).GetPrintable());
-	uri.AddField(wxT("xt"), wxString(wxT("urn:ed2k:")) + f->GetFileHash().Encode().Lower());
-	uri.AddField(wxT("xt"), wxString(wxT("urn:ed2khash:")) + f->GetFileHash().Encode().Lower());
-	uri.AddField(wxT("xl"), CFormat(wxT("%d")) % f->GetFileSize());
+	uri.AddField("dn", f->GetFileName().Cleanup(false).GetPrintable());
+	uri.AddField("xt", wxString("urn:ed2k:") + f->GetFileHash().Encode().Lower());
+	uri.AddField("xt", wxString("urn:ed2khash:") + f->GetFileHash().Encode().Lower());
+	uri.AddField("xl", CFormat("%d") % f->GetFileSize());
 
 	return uri.GetLink();
 }
@@ -153,7 +201,7 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 {
 	wxASSERT(!(!add_source && (use_hostname || add_cryptoptions)));
 	// Construct URL like this: ed2k://|file|<filename>|<size>|<hash>|/
-	wxString strURL = CFormat(wxT("ed2k://|file|%s|%i|%s|"))
+	wxString strURL = CFormat("ed2k://|file|%s|%i|%s|")
 		% f->GetFileName().Cleanup(false)
 		% f->GetFileSize() % f->GetFileHash().Encode();
 
@@ -161,20 +209,20 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 	if (add_AICH) {
 		const CKnownFile* kf = dynamic_cast<const CKnownFile*>(f);
 		if (kf && kf->HasProperAICHHashSet()) {
-			strURL << wxT("h=") << kf->GetAICHMasterHash() << wxT("|");
+			strURL << "h=" << kf->GetAICHMasterHash() << "|";
 		}
 	}
 
-	strURL << wxT("/");
+	strURL << "/";
 
 	if (add_source && theApp->IsConnected() && !theApp->IsFirewalled()) {
 		// Create the first part of the URL
-		strURL << wxT("|sources,");
+		strURL << "|sources,";
 		if (use_hostname) {
 			strURL << thePrefs::GetYourHostname();
 		} else {
 			uint32 clientID = theApp->GetID();
-			strURL = CFormat(wxT("%s%u.%u.%u.%u"))
+			strURL = CFormat("%s%u.%u.%u.%u")
 				% strURL
 				% (clientID & 0xff)
 				% ((clientID >> 8) & 0xff)
@@ -182,7 +230,7 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 				% ((clientID >> 24) & 0xff);
 		}
 
-		strURL << wxT(":") <<
+		strURL << ":" <<
 			thePrefs::GetPort();
 
 		if (add_cryptoptions) {
@@ -191,13 +239,13 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 			uint8 uRequiresCryptLayer = thePrefs::IsClientCryptLayerRequired() ? 1 : 0;
 			uint16 byCryptOptions = (uRequiresCryptLayer << 2) | (uRequestsCryptLayer << 1) | (uSupportsCryptLayer << 0) | (uSupportsCryptLayer ? 0x80 : 0x00);
 
-			strURL << wxT(":") << byCryptOptions;
+			strURL << ":" << byCryptOptions;
 
 			if (byCryptOptions & 0x80) {
-				strURL << wxT(":") << thePrefs::GetUserHash().Encode();
+				strURL << ":" << thePrefs::GetUserHash().Encode();
 			}
 		}
-		strURL << wxT("|/");
+		strURL << "|/";
 	} else if (add_source) {
 		AddLogLineC(_("WARNING: You can't add yourself as a source for an eD2k link while having a lowid."));
 	}
@@ -209,58 +257,60 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 
 bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 {
-	theApp->SetAppName(wxT("aMule"));
+	theApp->SetAppName("aMule");
 	FullMuleVersion = GetFullMuleVersion();
 	OSDescription = wxGetOsDescription();
-	OSType = OSDescription.BeforeFirst( wxT(' ') );
+	OSType = OSDescription.BeforeFirst( ' ' );
 	if ( OSType.IsEmpty() ) {
-		OSType = wxT("Unknown");
+		OSType = "Unknown";
 	}
 
 	// Parse cmdline arguments.
 	wxCmdLineParser cmdline(argc, argv);
 
 	// Handle these arguments.
-	cmdline.AddSwitch(wxT("v"), wxT("version"), wxT("Displays the current version number."));
-	cmdline.AddSwitch(wxT("h"), wxT("help"), wxT("Displays this information."));
-	cmdline.AddOption(wxT("c"), wxT("config-dir"), wxT("read config from <dir> instead of home"));
+	cmdline.AddSwitch("v", "version", "Displays the current version number.");
+	cmdline.AddSwitch("h", "help", "Displays this information.");
+	cmdline.AddOption("c", "config-dir", "read config from <dir> instead of home");
 #ifdef AMULE_DAEMON
-	cmdline.AddSwitch(wxT("f"), wxT("full-daemon"), wxT("Fork to background."));
-	cmdline.AddOption(wxT("p"), wxT("pid-file"), wxT("After fork, create a pid-file in the given fullname file."));
-	cmdline.AddSwitch(wxT("e"), wxT("ec-config"), wxT("Configure EC (External Connections)."));
+	cmdline.AddSwitch("f", "full-daemon", "Fork to background.");
+	cmdline.AddOption("p", "pid-file", "After fork, create a pid-file in the given fullname file.");
+	cmdline.AddSwitch("e", "ec-config", "Configure EC (External Connections).");
 #else
 
 #ifdef __WINDOWS__
 	// MSW shows help options in a dialog box, and the formatting doesn't fit there
-#define HELPTAB wxT("\t")
+#define HELPTAB "\t"
 #else
-#define HELPTAB wxT("\t\t\t")
+#define HELPTAB "\t\t\t"
 #endif
 
-	cmdline.AddOption(wxT("geometry"), wxEmptyString,
-			wxT("Sets the geometry of the app.\n")
-			HELPTAB wxT("<str> uses the same format as standard X11 apps:\n")
-			HELPTAB wxT("[=][<width>{xX}<height>][{+-}<xoffset>{+-}<yoffset>]"));
+	cmdline.AddOption("geometry", "",
+			"Sets the geometry of the app.\n"
+			HELPTAB "<str> uses the same format as standard X11 apps:\n"
+			HELPTAB "[=][<width>{xX}<height>][{+-}<xoffset>{+-}<yoffset>]");
 #endif // !AMULE_DAEMON
 
-	cmdline.AddSwitch(wxT("o"), wxT("log-stdout"), wxT("Print log messages to stdout."));
-	cmdline.AddSwitch(wxT("r"), wxT("reset-config"), wxT("Resets config to default values."));
+	cmdline.AddSwitch("o", "log-stdout", "Print log messages to stdout.");
+	cmdline.AddSwitch("r", "reset-config", "Resets config to default values.");
 
 #ifdef CLIENT_GUI
-	cmdline.AddSwitch(wxT("s"), wxT("skip"), wxT("Skip connection dialog."));
+	cmdline.AddSwitch("s", "skip", "Skip connection dialog.");
 #else
 	// Change webserver path. This is also a config option, so this switch will go at some time.
-	cmdline.AddOption(wxT("w"), wxT("use-amuleweb"), wxT("Specify location of amuleweb binary."));
+	cmdline.AddOption("w", "use-amuleweb", "Specify location of amuleweb binary.");
 #endif
 #ifndef __WINDOWS__
-	cmdline.AddSwitch(wxT("d"), wxT("disable-fatal"), wxT("Do not handle fatal exception."));
+	cmdline.AddSwitch("d", "disable-fatal",
+		"Don't catch fatal exceptions or block exit on assertions "
+		"(useful under systemd / watchdog scripts).");
 // Keep stdin open to run valgrind --gen_suppressions
-	cmdline.AddSwitch(wxT("i"), wxT("enable-stdin"), wxT("Do not disable stdin."));
+	cmdline.AddSwitch("i", "enable-stdin", "Do not disable stdin.");
 #endif
 
 	// Allow passing of links to the app
-	cmdline.AddOption(wxT("t"), wxT("category"), wxT("Set category for passed ED2K links."), wxCMD_LINE_VAL_NUMBER);
-	cmdline.AddParam(wxT("ED2K link"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE);
+	cmdline.AddOption("t", "category", "Set category for passed ED2K links.", wxCMD_LINE_VAL_NUMBER);
+	cmdline.AddParam("ED2K link", wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE);
 
 	// wx asserts in debug mode if there is a check for an option that wasn't added.
 	// So we have to wrap around the same #ifdefs as above. >:(
@@ -268,19 +318,19 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 	// Show help on --help or invalid commands
 	if ( cmdline.Parse() ) {
 		return false;
-	} else if (cmdline.Found(wxT("help"))) {
+	} else if (cmdline.Found("help")) {
 		cmdline.Usage();
 		return false;
 	}
 
-	if ( cmdline.Found(wxT("version"))) {
+	if ( cmdline.Found("version")) {
 		// This looks silly with logging macros that add a timestamp.
-		printf("%s\n", (const char*)unicode2char(wxString(CFormat(wxT("%s (OS: %s)")) % FullMuleVersion % OSType)));
+		printf("%s\n", (const char*)unicode2char(wxString(CFormat("%s (OS: %s)") % FullMuleVersion % OSType)));
 		return false;
 	}
 
 	wxString configdir;
-	if (cmdline.Found(wxT("config-dir"), &configdir)) {
+	if (cmdline.Found("config-dir", &configdir)) {
 		// Make an absolute path from the config dir
 		wxFileName fn(configdir);
 		fn.MakeAbsolute();
@@ -298,53 +348,54 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 	// in the try/catch somewhere.
 	// So leave it out.
 #ifndef __WINDOWS__
+	m_disableFatal = cmdline.Found("disable-fatal");
 	#if wxUSE_ON_FATAL_EXCEPTION
-		if ( !cmdline.Found(wxT("disable-fatal")) ) {
+		if ( !m_disableFatal ) {
 			// catch fatal exceptions
 			wxHandleFatalExceptions(true);
 		}
 	#endif
 #endif
 
-	theLogger.SetEnabledStdoutLog(cmdline.Found(wxT("log-stdout")));
+	theLogger.SetEnabledStdoutLog(cmdline.Found("log-stdout"));
 #ifdef AMULE_DAEMON
-	enable_daemon_fork = cmdline.Found(wxT("full-daemon"));
-	if ( cmdline.Found(wxT("pid-file"), &m_PidFile) ) {
+	enable_daemon_fork = cmdline.Found("full-daemon");
+	if ( cmdline.Found("pid-file", &m_PidFile) ) {
 		// Remove any existing PidFile
 		if ( wxFileExists (m_PidFile) ) wxRemoveFile (m_PidFile);
 	}
-	ec_config = cmdline.Found(wxT("ec-config"));
+	ec_config = cmdline.Found("ec-config");
 #else
 	enable_daemon_fork = false;
 
 	// Default geometry of the GUI. Can be changed with a cmdline argument...
-	if ( cmdline.Found(wxT("geometry"), &m_geometryString) ) {
+	if ( cmdline.Found("geometry", &m_geometryString) ) {
 		m_geometryEnabled = true;
 	}
 #endif
 
 	if (theLogger.IsEnabledStdoutLog()) {
 		if ( enable_daemon_fork ) {
-			AddLogLineNS(wxT("Daemon will fork to background - log to stdout disabled"));	// localization not active yet
+			AddLogLineNS("Daemon will fork to background - log to stdout disabled");	// localization not active yet
 			theLogger.SetEnabledStdoutLog(false);
 		} else {
-			AddLogLineNS(wxT("Logging to stdout enabled"));
+			AddLogLineNS("Logging to stdout enabled");
 		}
 	}
 
-	AddLogLineNS(wxT("Initialising ") + FullMuleVersion);
+	AddLogLineNS("Initialising " + FullMuleVersion);
 
 	// Ensure that "~/.aMule/" is accessible.
 	CPath outDir;
-	if (!CheckMuleDirectory(wxT("configuration"), CPath(thePrefs::GetConfigDir()), wxEmptyString, outDir)) {
+	if (!CheckMuleDirectory("configuration", CPath(thePrefs::GetConfigDir()), "", outDir)) {
 		return false;
 	}
 
-	if (cmdline.Found(wxT("reset-config"))) {
+	if (cmdline.Found("reset-config")) {
 		// Make a backup first.
-		wxRemoveFile(thePrefs::GetConfigDir() + m_configFile + wxT(".backup"));
-		wxRenameFile(thePrefs::GetConfigDir() + m_configFile, thePrefs::GetConfigDir() + m_configFile + wxT(".backup"));
-		AddLogLineNS(CFormat(wxT("Your settings have been reset to default values.\nThe old config file has been saved as %s.backup\n")) % m_configFile);
+		wxRemoveFile(thePrefs::GetConfigDir() + m_configFile + ".backup");
+		wxRenameFile(thePrefs::GetConfigDir() + m_configFile, thePrefs::GetConfigDir() + m_configFile + ".backup");
+		AddLogLineNS(CFormat("Your settings have been reset to default values.\nThe old config file has been saved as %s.backup\n") % m_configFile);
 	}
 
 	size_t linksPassed = cmdline.GetParamCount();	// number of links from the command line
@@ -352,11 +403,11 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 	int linksActuallyPassed = 0;					// number of links that pass the syntax check
 	if (linksPassed) {
 		long cat = 0;
-		if (!cmdline.Found(wxT("t"), &cat)) {
+		if (!cmdline.Found("t", &cat)) {
 			cat = 0;
 		}
 
-		wxTextFile ed2kFile(thePrefs::GetConfigDir() + wxT("ED2KLinks"));
+		wxTextFile ed2kFile(thePrefs::GetConfigDir() + "ED2KLinks");
 		if (!ed2kFile.Exists()) {
 			ed2kFile.Create();
 		}
@@ -370,53 +421,53 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 			}
 			ed2kFile.Write();
 		} else {
-			AddLogLineCS(wxT("Failed to open 'ED2KLinks', cannot add links."));
+			AddLogLineCS("Failed to open 'ED2KLinks', cannot add links.");
 		}
 	}
 
 #if defined(__WXMAC__) && defined(AMULE_DAEMON)
 	//#warning TODO: fix wxSingleInstanceChecker for amuled on Mac (wx link problems)
-	AddLogLineCS(wxT("WARNING: The check for other instances is currently disabled in amuled.\n"
-		"Please make sure that no other instance of aMule is running or your files might be corrupted.\n"));
+	AddLogLineCS("WARNING: The check for other instances is currently disabled in amuled.\n"
+		"Please make sure that no other instance of aMule is running or your files might be corrupted.\n");
 #else
-	AddLogLineNS(wxT("Checking if there is an instance already running..."));
+	AddLogLineNS("Checking if there is an instance already running...");
 
 	m_singleInstance = new wxSingleInstanceChecker();
-	wxString lockfile = IsRemoteGui() ? wxT("muleLockRGUI") : wxT("muleLock");
+	wxString lockfile = IsRemoteGui() ? "muleLockRGUI" : "muleLock";
 	if (m_singleInstance->Create(lockfile, thePrefs::GetConfigDir())
 		&& m_singleInstance->IsAnotherRunning()) {
-		AddLogLineCS(CFormat(wxT("There is an instance of %s already running")) % m_appName);
-		AddLogLineNS(CFormat(wxT("(lock file: %s%s)")) % thePrefs::GetConfigDir() % lockfile);
+		AddLogLineCS(CFormat("There is an instance of %s already running") % m_appName);
+		AddLogLineNS(CFormat("(lock file: %s%s)") % thePrefs::GetConfigDir() % lockfile);
 		if (linksPassed) {
-			AddLogLineNS(CFormat(wxT("passed %d %s to it, finished")) % linksActuallyPassed
-				% (linksPassed == 1 ? wxT("link") : wxT("links")));
+			AddLogLineNS(CFormat("passed %d %s to it, finished") % linksActuallyPassed
+				% (linksPassed == 1 ? "link" : "links"));
 			return false;
 		}
 
 		// This is very tricky. The most secure way to communicate is via ED2K links file
-		wxTextFile ed2kFile(thePrefs::GetConfigDir() + wxT("ED2KLinks"));
+		wxTextFile ed2kFile(thePrefs::GetConfigDir() + "ED2KLinks");
 		if (!ed2kFile.Exists()) {
 			ed2kFile.Create();
 		}
 
 		if (ed2kFile.Open()) {
-			ed2kFile.AddLine(wxT("RAISE_DIALOG"));
+			ed2kFile.AddLine("RAISE_DIALOG");
 			ed2kFile.Write();
 
-			AddLogLineNS(wxT("Raising current running instance."));
+			AddLogLineNS("Raising current running instance.");
 		} else {
-			AddLogLineCS(wxT("Failed to open 'ED2KFile', cannot signal running instance."));
+			AddLogLineCS("Failed to open 'ED2KFile', cannot signal running instance.");
 		}
 
 		return false;
 	} else {
-		AddLogLineNS(wxT("No other instances are running."));
+		AddLogLineNS("No other instances are running.");
 	}
 #endif
 
 #ifndef __WINDOWS__
 	// Close standard-input
-	if ( !cmdline.Found(wxT("enable-stdin")) )	{
+	if ( !cmdline.Found("enable-stdin") )	{
 		// The full daemon will close all std file-descriptors by itself,
 		// so closing it here would lead to the closing on the first open
 		// file, which is the logfile opened below
@@ -427,12 +478,12 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 #endif
 
 	// Create the CFG file we shall use and set the config object as the global cfg file
-	wxConfig::Set(new wxFileConfig( wxEmptyString, wxEmptyString, thePrefs::GetConfigDir() + m_configFile));
+	wxConfig::Set(new wxFileConfig( "", "", thePrefs::GetConfigDir() + m_configFile));
 
 	// Make a backup of the log file
 	CPath logfileName = CPath(thePrefs::GetConfigDir() + m_logFile);
 	if (logfileName.FileExists()) {
-		CPath::BackupFile(logfileName, wxT(".bak"));
+		CPath::BackupFile(logfileName, ".bak");
 	}
 
 	// Open the log file
@@ -448,12 +499,12 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 	CPreferences::LoadAllItems( wxConfigBase::Get() );
 
 #ifdef CLIENT_GUI
-	m_skipConnectionDialog = cmdline.Found(wxT("skip"));
+	m_skipConnectionDialog = cmdline.Found("skip");
 #else
 	wxString amulewebPath;
-	if (cmdline.Found(wxT("use-amuleweb"), &amulewebPath)) {
+	if (cmdline.Found("use-amuleweb", &amulewebPath)) {
 		thePrefs::SetWSPath(amulewebPath);
-		AddLogLineNS(CFormat(wxT("Using amuleweb in '%s'.")) % amulewebPath);
+		AddLogLineNS(CFormat("Using amuleweb in '%s'.") % amulewebPath);
 	}
 #endif
 
@@ -468,7 +519,7 @@ bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
  */
 const wxString CamuleAppCommon::GetFullMuleVersion() const
 {
-	return GetMuleAppName() + wxT(" ") + GetMuleVersion();
+	return GetMuleAppName() + " " + GetMuleVersion();
 }
 
 bool CamuleAppCommon::CheckPassedLink(const wxString &in, wxString &out, int cat)
@@ -476,13 +527,13 @@ bool CamuleAppCommon::CheckPassedLink(const wxString &in, wxString &out, int cat
 	wxString link(in);
 
 	// restore ASCII-encoded pipes
-	link.Replace(wxT("%7C"), wxT("|"));
-	link.Replace(wxT("%7c"), wxT("|"));
+	link.Replace("%7C", "|");
+	link.Replace("%7c", "|");
 
-	if (link.compare(0, 7, wxT("magnet:")) == 0) {
+	if (link.compare(0, 7, "magnet:") == 0) {
 		link = CMagnetED2KConverter(link);
 		if (link.empty()) {
-			AddLogLineCS(CFormat(wxT("Cannot convert magnet link to eD2k: %s")) % in);
+			AddLogLineCS(CFormat("Cannot convert magnet link to eD2k: %s") % in);
 			return false;
 		}
 	}
@@ -491,11 +542,11 @@ bool CamuleAppCommon::CheckPassedLink(const wxString &in, wxString &out, int cat
 		CScopedPtr<CED2KLink> uri(CED2KLink::CreateLinkFromUrl(link));
 		out = uri.get()->GetLink();
 		if (cat && uri.get()->GetKind() == CED2KLink::kFile) {
-			out += CFormat(wxT(":%d")) % cat;
+			out += CFormat(":%d") % cat;
 		}
 		return true;
 	} catch ( const wxString& err ) {
-		AddLogLineCS(CFormat(wxT("Invalid eD2k link \"%s\" - ERROR: %s")) % link % err);
+		AddLogLineCS(CFormat("Invalid eD2k link \"%s\" - ERROR: %s") % link % err);
 	}
 	return false;
 }
@@ -519,32 +570,32 @@ bool CamuleAppCommon::CheckMuleDirectory(const wxString& desc, const CPath& dire
 		return true;
 	} else if (directory.DirExists()) {
 		// Strings are not translated here because translation isn't up yet.
-		msg = CFormat(wxT("Permissions on the %s directory too strict!\n")
-			wxT("aMule cannot proceed. To fix this, you must set read/write/exec\n")
-			wxT("permissions for the folder '%s'"))
+		msg = CFormat("Permissions on the %s directory too strict!\n"
+			"aMule cannot proceed. To fix this, you must set read/write/exec\n"
+			"permissions for the folder '%s'")
 				% desc % directory;
 	} else if (CPath::MakeDir(directory)) {
 		outDir = directory;
 		return true;
 	} else {
-		msg << CFormat(wxT("Could not create the %s directory at '%s'."))
+		msg << CFormat("Could not create the %s directory at '%s'.")
 			% desc % directory;
 	}
 
 	// Attempt to use fallback directory.
 	const CPath fallback(alternative);
 	if (fallback.IsOk() && (directory != fallback)) {
-		msg << wxT("\nAttempting to use default directory at location \n'")
-			<< alternative << wxT("'.");
-		if (theApp->ShowAlert(msg, wxT("Error accessing directory."), wxICON_ERROR | wxOK | wxCANCEL) == wxCANCEL) {
-			outDir = CPath(wxEmptyString);
+		msg << "\nAttempting to use default directory at location \n'"
+			<< alternative << "'.";
+		if (theApp->ShowAlert(msg, "Error accessing directory.", wxICON_ERROR | wxOK | wxCANCEL) == wxCANCEL) {
+			outDir = CPath("");
 			return false;
 		}
 
-		return CheckMuleDirectory(desc, fallback, wxEmptyString, outDir);
+		return CheckMuleDirectory(desc, fallback, "", outDir);
 	}
 
-	theApp->ShowAlert(msg, wxT("Fatal error."), wxICON_ERROR | wxOK);
-	outDir = CPath(wxEmptyString);
+	theApp->ShowAlert(msg, "Fatal error.", wxICON_ERROR | wxOK);
+	outDir = CPath("");
 	return false;
 }

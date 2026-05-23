@@ -226,6 +226,11 @@ private:
 	CECPacket *ProcessRequest2(const CECPacket *request);
 
 	virtual bool IsAuthorized() { return m_conn_state == CONN_ESTABLISHED; }
+
+	// Bound on the WriteDoneAndQueueEmpty -> SendPacket -> OnOutput ->
+	// WriteDoneAndQueueEmpty recursion chain that drains the notifier
+	// queue. See WriteDoneAndQueueEmpty for the full reasoning.
+	int		m_notification_dispatch_depth;
 };
 
 
@@ -233,7 +238,8 @@ CECServerSocket::CECServerSocket(ECNotifier *notifier)
 :
 CECMuleSocket(true),
 m_conn_state(CONN_INIT),
-m_passwd_salt(GetRandomUint64())
+m_passwd_salt(GetRandomUint64()),
+m_notification_dispatch_depth(0)
 {
 	wxASSERT(theApp->ECServerHandler);
 	theApp->ECServerHandler->AddSocket(this);
@@ -281,30 +287,58 @@ void CECServerSocket::OnLost()
 
 void CECServerSocket::WriteDoneAndQueueEmpty()
 {
-	if ( HaveNotificationSupport() && (m_conn_state == CONN_ESTABLISHED) ) {
-		CECPacket *packet = m_ec_notifier->GetNextPacket(this);
-		if ( packet ) {
-			SendPacket(packet);
-		}
-	} else {
+	if (!HaveNotificationSupport() || m_conn_state != CONN_ESTABLISHED) {
 		//printf("[EC] %p: WriteDoneAndQueueEmpty but notification disabled\n", this);
+		return;
 	}
+
+	// CECSocket::OnOutput drains the per-socket output queue, then calls
+	// WriteDoneAndQueueEmpty to pull the next notification packet. The
+	// chain runs synchronously on the main thread:
+	//
+	//   WriteDoneAndQueueEmpty -> SendPacket -> WritePacket + OnOutput
+	//     -> OnOutput drains queue -> WriteDoneAndQueueEmpty -> ...
+	//
+	// On a busy amuled (many peers / files generating notifications) the
+	// ECNotifier always has the next packet ready, so the recursion never
+	// bottoms out. The main thread stays inside this chain processing the
+	// notifier feed and never yields back to the wx event loop. That
+	// starves every other event -- including LibSocketLost from a
+	// half-closed EC peer, which is what CECServerSocket::OnLost needs
+	// to fire so it can tear the dead socket down.
+	//
+	// In the wedged-amuleweb scenario reported in #666, the peer is in
+	// kernel CLOSE-WAIT, writes silently succeed against the dead
+	// kernel buffer, and amuled spins indefinitely flushing the
+	// notifier to nowhere -- amulegui can't connect because the main
+	// thread is permanently occupied.
+	//
+	// Cap the dispatch depth so the chain returns to the event loop
+	// every MAX_DEPTH packets. The pending asio LibSocketSend
+	// completions (or LibSocketLost, if the peer has gone away) get
+	// processed in between; on a healthy peer the loop simply resumes
+	// when OnSend re-enters via the next completion.
+	static const int MAX_DEPTH = 8;
+	if (m_notification_dispatch_depth >= MAX_DEPTH) {
+		return;
+	}
+
+	CECPacket *packet = m_ec_notifier->GetNextPacket(this);
+	if (!packet) {
+		return;
+	}
+
+	m_notification_dispatch_depth++;
+	try {
+		SendPacket(packet);
+	} catch (...) {
+		m_notification_dispatch_depth--;
+		throw;
+	}
+	m_notification_dispatch_depth--;
 }
 
 //-------------------- ExternalConn --------------------
-
-#ifndef ASIO_SOCKETS
-enum
-{	// id for sockets
-	SERVER_ID = 1000
-};
-
-
-BEGIN_EVENT_TABLE(ExternalConn, wxEvtHandler)
-	EVT_SOCKET(SERVER_ID, ExternalConn::OnServerEvent)
-END_EVENT_TABLE()
-#endif
-
 
 ExternalConn::ExternalConn(amuleIPV4Address addr, wxString *msg)
 {
@@ -314,32 +348,28 @@ ExternalConn::ExternalConn(amuleIPV4Address addr, wxString *msg)
 	if ( thePrefs::AcceptExternalConnections() ) {
 		// We must have a valid password, otherwise we will not allow EC connections
 		if (thePrefs::ECPassword().IsEmpty()) {
-			*msg += wxT("External connections disabled due to empty password!\n");
+			*msg += "External connections disabled due to empty password!\n";
 			AddLogLineC(_("External connections disabled due to empty password!"));
 			return;
 		}
 
 		// Create the socket
 		m_ECServer = new CExternalConnListener(addr, MULE_SOCKET_REUSEADDR, this);
-#ifndef ASIO_SOCKETS
-		m_ECServer->SetEventHandler(*this, SERVER_ID);
-		m_ECServer->SetNotify(wxSOCKET_CONNECTION_FLAG);
-#endif
 		m_ECServer->Notify(true);
 
 		int port = addr.Service();
 		wxString ip = addr.IPAddress();
 		if (m_ECServer->IsOk()) {
-			msgLocal = CFormat(wxT("*** TCP socket (ECServer) listening on %s:%d")) % ip % port;
-			*msg += msgLocal + wxT("\n");
+			msgLocal = CFormat("*** TCP socket (ECServer) listening on %s:%d") % ip % port;
+			*msg += msgLocal + "\n";
 			AddLogLineN(msgLocal);
 		} else {
-			msgLocal = CFormat(wxT("Could not listen for external connections at %s:%d!")) % ip % port;
-			*msg += msgLocal + wxT("\n");
+			msgLocal = CFormat("Could not listen for external connections at %s:%d!") % ip % port;
+			*msg += msgLocal + "\n";
 			AddLogLineN(msgLocal);
 		}
 	} else {
-		*msg += wxT("External connections disabled in config file\n");
+		*msg += "External connections disabled in config file\n";
 		AddLogLineN(_("External connections disabled in config file"));
 	}
 	m_ec_notifier = new ECNotifier();
@@ -371,7 +401,7 @@ void ExternalConn::RemoveSocket(CECServerSocket *s)
 void ExternalConn::KillAllSockets()
 {
 	AddDebugLogLineN(logGeneral,
-		CFormat(wxT("ExternalConn::KillAllSockets(): %d sockets to destroy.")) %
+		CFormat("ExternalConn::KillAllSockets(): %d sockets to destroy.") %
 			socket_list.size());
 	SocketSet::iterator it = socket_list.begin();
 	while (it != socket_list.end()) {
@@ -391,14 +421,6 @@ void ExternalConn::ResetAllLogs()
 		s->ResetLog();
 	}
 }
-
-
-#ifndef ASIO_SOCKETS
-void ExternalConn::OnServerEvent(wxSocketEvent& WXUNUSED(event))
-{
-	m_ECServer->OnAccept();
-}
-#endif
 
 
 void CExternalConnListener::OnAccept()
@@ -448,9 +470,9 @@ const CECPacket *CECServerSocket::Authenticate(const CECPacket *request)
 #ifdef EC_VERSION_ID
 		// For SVN versions, both client and server must use SVNDATE, and they must be the same
 		CMD4Hash vhash;
-		if (!vhash.Decode(wxT(EC_VERSION_ID))) {
+		if (!vhash.Decode(EC_VERSION_ID)) {
 			response = new CECPacket(EC_OP_AUTH_FAIL);
-			response->AddTag(CECTag(EC_TAG_STRING, wxT("Fatal error, version hash is not a valid MD4-hash.")));
+			response->AddTag(CECTag(EC_TAG_STRING, "Fatal error, version hash is not a valid MD4-hash."));
 		} else if (!request->GetTagByName(EC_TAG_VERSION_ID) || request->GetTagByNameSafe(EC_TAG_VERSION_ID)->GetMD4Data() != vhash) {
 			response = new CECPacket(EC_OP_AUTH_FAIL);
 			response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Incorrect EC version ID, there might be binary incompatibility. Use core and remote from same snapshot.")));
@@ -475,15 +497,23 @@ const CECPacket *CECServerSocket::Authenticate(const CECPacket *request)
 				if (request->GetTagByName(EC_TAG_CAN_UTF8_NUMBERS)) {
 					m_my_flags |= EC_FLAG_UTF8_NUMBERS;
 				}
+				if (request->GetTagByName(EC_TAG_CAN_LARGE_TAG_COUNT)) {
+					// Client can decode the sentinel-extended children-
+					// count format in CECTag::WriteChildren (#199). Only
+					// new clients send this tag; old clients omit it
+					// and we keep the wire format capped at uint16.
+					m_my_flags |= EC_FLAG_LARGE_TAG_COUNT;
+				}
 				m_haveNotificationSupport = request->GetTagByName(EC_TAG_CAN_NOTIFY) != NULL;
-				AddDebugLogLineN(logEC, CFormat(wxT("Client capabilities: ZLIB: %s  UTF8 numbers: %s  Push notification: %s") )
-					% ((m_my_flags & EC_FLAG_ZLIB) ? wxT("yes") : wxT("no"))
-					% ((m_my_flags & EC_FLAG_UTF8_NUMBERS) ? wxT("yes") : wxT("no"))
-					% (m_haveNotificationSupport ? wxT("yes") : wxT("no")));
+				AddDebugLogLineN(logEC, CFormat("Client capabilities: ZLIB: %s  UTF8 numbers: %s  Push notification: %s  Large tag count: %s" )
+					% ((m_my_flags & EC_FLAG_ZLIB) ? "yes" : "no")
+					% ((m_my_flags & EC_FLAG_UTF8_NUMBERS) ? "yes" : "no")
+					% (m_haveNotificationSupport ? "yes" : "no")
+					% ((m_my_flags & EC_FLAG_LARGE_TAG_COUNT) ? "yes" : "no"));
 			} else {
 				response = new CECPacket(EC_OP_AUTH_FAIL);
-				response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Invalid protocol version.")
-					+ CFormat(wxT("( %#.4x != %#.4x )")) % proto_version % (uint16_t)EC_CURRENT_PROTOCOL_VERSION));
+				response->AddTag(CECTag(EC_TAG_STRING, wxString(wxTRANSLATE("Invalid protocol version."))
+					+ wxString(CFormat("( %#.4x != %#.4x )") % proto_version % (uint16_t)EC_CURRENT_PROTOCOL_VERSION)));
 			}
 		} else {
 			response = new CECPacket(EC_OP_AUTH_FAIL);
@@ -496,18 +526,27 @@ const CECPacket *CECServerSocket::Authenticate(const CECPacket *request)
 		if (!passh.Decode(thePrefs::ECPassword())) {
 			wxString err = wxTRANSLATE("Authentication failed: invalid hash specified as EC password.");
 			AddLogLineN(wxString(wxGetTranslation(err))
-						+ wxT(" ") + thePrefs::ECPassword());
+						+ " " + thePrefs::ECPassword());
 			response = new CECPacket(EC_OP_AUTH_FAIL);
 			response->AddTag(CECTag(EC_TAG_STRING, err));
 		} else {
-			wxString saltHash = MD5Sum(CFormat(wxT("%lX")) % m_passwd_salt).GetHash();
-			wxString saltStr = CFormat(wxT("%lX")) % m_passwd_salt;
+			wxString saltHash = MD5Sum(CFormat("%lX") % m_passwd_salt).GetHash();
+			wxString saltStr = CFormat("%lX") % m_passwd_salt;
 
 			passh.Decode(MD5Sum(thePrefs::ECPassword().Lower() + saltHash).GetHash());
 
 			if (passwd && passwd->GetMD4Data() == passh) {
 				response = new CECPacket(EC_OP_AUTH_OK);
-				response->AddTag(CECTag(EC_TAG_SERVER_VERSION, wxT(VERSION)));
+				response->AddTag(CECTag(EC_TAG_SERVER_VERSION, VERSION));
+				// Echo the negotiated large-tag-count capability so
+				// the client mirrors EC_FLAG_LARGE_TAG_COUNT into its
+				// own m_my_flags. Without this echo, client wouldn't
+				// know the server supports the extended wire format
+				// and would never set the flag in its outgoing
+				// per-packet headers (#199).
+				if (m_my_flags & EC_FLAG_LARGE_TAG_COUNT) {
+					response->AddTag(CECEmptyTag(EC_TAG_CAN_LARGE_TAG_COUNT));
+				}
 			} else {
 				wxString err;
 				if (passwd) {
@@ -608,7 +647,7 @@ static CECPacket *Get_EC_Response_StatRequest(const CECPacket *request, CLoggerA
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_INDEXED_KEYWORDS, Kademlia::CKademlia::GetIndexed()->m_totalIndexKeyword));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_INDEXED_NOTES, Kademlia::CKademlia::GetIndexed()->m_totalIndexNotes));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_INDEXED_LOAD, Kademlia::CKademlia::GetIndexed()->m_totalIndexLoad));
-				response->AddTag(CECTag(EC_TAG_STATS_KAD_IP_ADRESS, wxUINT32_SWAP_ALWAYS(Kademlia::CKademlia::GetPrefs()->GetIPAddress())));
+				response->AddTag(CECTag(EC_TAG_STATS_KAD_IP_ADDRESS, wxUINT32_SWAP_ALWAYS(Kademlia::CKademlia::GetPrefs()->GetIPAddress())));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_IN_LAN_MODE, Kademlia::CKademlia::IsRunningInLANMode()));
 				response->AddTag(CECTag(EC_TAG_STATS_BUDDY_STATUS, theApp->clientlist->GetBuddyStatus()));
 				uint32 BuddyIP = 0;
@@ -952,7 +991,7 @@ static CECPacket *Get_EC_Response_Friend(const CECPacket *request)
 		if (subtag) {
 			CUpDownClient * client = theApp->clientlist->FindClientByECID(subtag->GetInt());
 			if (client) {
-				theApp->friendlist->AddFriend(CCLIENTREF(client, wxT("Get_EC_Response_Friend theApp->friendlist->AddFriend")));
+				theApp->friendlist->AddFriend(CCLIENTREF(client, "Get_EC_Response_Friend theApp->friendlist->AddFriend"));
 				response = new CECPacket(EC_OP_NOOP);
 			}
 		} else {
@@ -971,8 +1010,14 @@ static CECPacket *Get_EC_Response_Friend(const CECPacket *request)
 			CFriend * Friend = theApp->friendlist->FindFriend(subtag->GetInt());
 			if (Friend) {
 				theApp->friendlist->RemoveFriend(Friend);
-				response = new CECPacket(EC_OP_NOOP);
 			}
+			// Idempotent: the desired end state of REMOVE is "friend
+			// not in the list", which is already true if FindFriend
+			// returned null (transient sync skew between amulegui's
+			// local view and the daemon's m_FriendList). Returning
+			// EC_OP_FAILED here forces the GUI into a resend / hang
+			// loop on the stale ECID.
+			response = new CECPacket(EC_OP_NOOP);
 		}
 	} else if ((tag = request->GetTagByName(EC_TAG_FRIEND_FRIENDSLOT))) {
 		const CECTag *subtag = tag->GetTagByName(EC_TAG_FRIEND);
@@ -984,26 +1029,30 @@ static CECPacket *Get_EC_Response_Friend(const CECPacket *request)
 			}
 		}
 	} else if ((tag = request->GetTagByName(EC_TAG_FRIEND_SHARED))) {
-		response = new CECPacket(EC_OP_FAILED);
-		response->AddTag(CECTag(EC_TAG_STRING, wxT("Request shared files list not implemented yet.")));
-#if 0
-		// This works fine - but there is no way atm to transfer the results to amulegui, so disable it for now.
-
 		const CECTag *subtag = tag->GetTagByName(EC_TAG_FRIEND);
 		if (subtag) {
 			CFriend * Friend = theApp->friendlist->FindFriend(subtag->GetInt());
 			if (Friend) {
 				theApp->friendlist->RequestSharedFileList(Friend);
 				response = new CECPacket(EC_OP_NOOP);
+			} else {
+				response = new CECPacket(EC_OP_FAILED);
+				response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Friend not found.")));
 			}
 		} else if ((subtag = tag->GetTagByName(EC_TAG_CLIENT))) {
 			CUpDownClient * client = theApp->clientlist->FindClientByECID(subtag->GetInt());
 			if (client) {
 				client->RequestSharedFileList();
 				response = new CECPacket(EC_OP_NOOP);
+			} else {
+				response = new CECPacket(EC_OP_FAILED);
+				response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Client not found.")));
 			}
+		} else {
+			response = new CECPacket(EC_OP_FAILED);
+			response->AddTag(CECTag(EC_TAG_STRING,
+				wxTRANSLATE("EC_TAG_FRIEND_SHARED requires EC_TAG_FRIEND or EC_TAG_CLIENT.")));
 		}
-#endif
 	}
 
 	if (!response) {
@@ -1306,12 +1355,28 @@ static CECPacket *GetStatsGraphs(const CECPacket *request)
 			}
 			uint16 nScale = request->GetTagByNameSafe(EC_TAG_STATSGRAPH_SCALE)->GetInt();
 			uint16 nMaxPoints = request->GetTagByNameSafe(EC_TAG_STATSGRAPH_WIDTH)->GetInt();
-			uint32 *graphData;
-			unsigned int numPoints = theApp->m_statistics->GetHistoryForWeb(nMaxPoints, (double)nScale, &dTimestamp, &graphData);
+			uint32 *graphData = NULL;
+			uint32 *connData = NULL;
+			uint64 sessionDl = 0, sessionUl = 0, sessionKad = 0;
+			double sessionTimespan = 0.0;
+			unsigned int numPoints = theApp->m_statistics->GetHistoryForGui(
+				nMaxPoints, (double)nScale, &dTimestamp, &graphData, &connData,
+				sessionDl, sessionUl, sessionKad, sessionTimespan);
 			if (numPoints) {
 				response = new CECPacket(EC_OP_STATSGRAPHS);
 				response->AddTag(CECTag(EC_TAG_STATSGRAPH_DATA, 4 * numPoints * sizeof(uint32), graphData));
+				// Per-point active uploads / active downloads. Older
+				// amulegui builds simply ignore the unknown tag.
+				response->AddTag(CECTag(EC_TAG_STATSGRAPH_DATA_CONN, 2 * numPoints * sizeof(uint32), connData));
 				delete [] graphData;
+				delete [] connData;
+				// Latest session totals — let amulegui compute the same
+				// kBytesReceived / sTimestamp session average monolithic
+				// shows, instead of falling back to a GUI-local integral.
+				response->AddTag(CECTag(EC_TAG_STATSGRAPH_SESSION_DL, sessionDl));
+				response->AddTag(CECTag(EC_TAG_STATSGRAPH_SESSION_UL, sessionUl));
+				response->AddTag(CECTag(EC_TAG_STATSGRAPH_SESSION_KAD, sessionKad));
+				response->AddTag(CECTag(EC_TAG_STATSGRAPH_SESSION_TIMESPAN, sessionTimespan));
 				response->AddTag(CECTag(EC_TAG_STATSGRAPH_LAST, dTimestamp));
 			} else {
 				response = new CECPacket(EC_OP_FAILED);
@@ -1366,7 +1431,13 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 				response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Already shutting down.")));
 			}
 			break;
-		case EC_OP_ADD_LINK:
+		case EC_OP_ADD_LINK: {
+			// Aggregate the per-link results into a single response: until
+			// #206 was filed, every iteration overwrote the previous response,
+			// so a batch of N-1 successes followed by one failure looked like
+			// a total failure to the caller (and vice versa).
+			int successCount = 0;
+			int failCount = 0;
 			for (CECPacket::const_iterator it = request->begin(); it != request->end(); ++it) {
 				const CECTag &tag = *it;
 				wxString link = tag.GetStringData();
@@ -1376,18 +1447,26 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 					category = cattag->GetInt();
 				}
 				AddLogLineC(CFormat(_("ExternalConn: adding link '%s'.")) % link);
-				if (response) {
-					delete response;
-				}
 				if ( theApp->downloadqueue->AddLink(link, category) ) {
-					response = new CECPacket(EC_OP_NOOP);
+					++successCount;
 				} else {
-					// Error messages are printed by the add function.
-					response = new CECPacket(EC_OP_FAILED);
-					response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Invalid link or already on list.")));
+					// Per-link error reasons are already printed by AddLink().
+					++failCount;
 				}
 			}
+			if (failCount == 0) {
+				response = new CECPacket(EC_OP_NOOP);
+			} else if (successCount == 0) {
+				response = new CECPacket(EC_OP_FAILED);
+				response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Invalid link or already on list.")));
+			} else {
+				response = new CECPacket(EC_OP_FAILED);
+				response->AddTag(CECTag(EC_TAG_STRING,
+					CFormat(wxString(wxTRANSLATE("%d of %d links failed (invalid or already on list).")))
+						% failCount % (failCount + successCount)));
+			}
 			break;
+		}
 		//
 		// Status requests
 		//
@@ -1744,7 +1823,7 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 				delete tree;
 			}
 			if (request->GetDetailLevel() == EC_DETAIL_WEB) {
-				response->AddTag(CECTag(EC_TAG_SERVER_VERSION, wxT(VERSION)));
+				response->AddTag(CECTag(EC_TAG_SERVER_VERSION, VERSION));
 				response->AddTag(CECTag(EC_TAG_USER_NICK, thePrefs::GetUserNick()));
 			}
 			break;

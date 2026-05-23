@@ -38,7 +38,7 @@
 	#include <signal.h>
 #endif // __WINDOWS__
 
-#include "config.h"			// Needed for ASIO_SOCKETS
+#include "config.h"			// Needed for ENABLE_UPNP
 
 class CAbstractFile;
 class CKnownFile;
@@ -47,6 +47,9 @@ class CamuleDlg;
 class CPreferences;
 class CDownloadQueue;
 class CUploadQueue;
+class CPartFileWriteThread;
+class CPartFileHashThread;
+class CPartFileHashResultEvent;
 class CServerConnect;
 class CSharedFileList;
 class CServer;
@@ -63,11 +66,8 @@ class CFriendList;
 class CClientUDPSocket;
 class CIPFilter;
 class UploadBandwidthThrottler;
-#ifdef ASIO_SOCKETS
+class CUploadDiskIOThread;
 class CAsioService;
-#else
-class wxSocketEvent;
-#endif
 #ifdef ENABLE_UPNP
 class CUPnPControlPoint;
 class CUPnPPortMapping;
@@ -132,6 +132,7 @@ protected:
 	bool		ec_config;
 	bool		m_skipConnectionDialog;
 	bool		m_geometryEnabled;
+	bool		m_disableFatal;
 	wxString	m_geometryString;
 	wxString	m_logFile;
 	wxString	m_appName;
@@ -164,6 +165,30 @@ public:
 
 	const wxString&	GetMuleAppName() const { return m_appName; }
 	const wxString	GetFullMuleVersion() const;
+
+#ifdef __WXGTK__
+	// True when the process is running under a Wayland session (any
+	// distro, any compositor). xdg-shell intentionally doesn't deliver
+	// iconify-state notifications to clients, so several tray-icon
+	// features that rely on detecting "user just minimized the
+	// window" cannot work there — the call sites use this flag to
+	// disable / grey out the relevant prefs and skip the broken paths.
+	static bool IsWaylandSession();
+#endif
+
+	// Set when a quit was requested out-of-band of the main-window
+	// close button (Cmd+Q, Dock right-click → Quit, tray-icon Exit).
+	// CamuleDlg::OnClose checks this so HideOnClose only hides the
+	// window for the actual red close-button gesture and never blocks
+	// an explicit quit request. Lives on the common base so both the
+	// monolithic CamuleApp and the remote-GUI CamuleRemoteGuiApp
+	// expose the same accessors.
+	bool IsQuitting() const { return m_isQuitting; }
+	void SetQuitting() { m_isQuitting = true; }
+	void ResetQuitting() { m_isQuitting = false; }
+
+private:
+	bool m_isQuitting = false;
 };
 
 class CamuleApp : public AMULE_APP_BASE, public CamuleAppCommon
@@ -188,12 +213,6 @@ public:
 
 	// derived classes may override those
 	virtual int InitGui(bool geometry_enable, wxString &geometry_string);
-
-#ifndef ASIO_SOCKETS
-	// Socket handlers
-	void ListenSocketHandler(wxSocketEvent& event);
-	void UDPSocketHandler(wxSocketEvent& event);
-#endif
 
 	virtual int ShowAlert(wxString msg, wxString title, int flags) = 0;
 
@@ -226,7 +245,7 @@ public:
 	uint32	GetKadIndexedNotes() const;
 	uint32	GetKadIndexedLoad() const;
 	// True IP of machine
-	uint32	GetKadIPAdress() const;
+	uint32	GetKadIPAddress() const;
 	// Buddy status
 	uint8	GetBuddyStatus() const;
 	uint32	GetBuddyIP() const;
@@ -257,6 +276,8 @@ public:
 	CPreferences*		glob_prefs;
 	CDownloadQueue*		downloadqueue;
 	CUploadQueue*		uploadqueue;
+	CPartFileWriteThread*	partFileWriteThread;
+	CPartFileHashThread*	partFileHashThread;
 	CServerConnect*		serverconnect;
 	CSharedFileList*	sharedfiles;
 	CServerList*		serverlist;
@@ -271,9 +292,8 @@ public:
 	CStatistics*		m_statistics;
 	CIPFilter*		ipfilter;
 	UploadBandwidthThrottler* uploadBandwidthThrottler;
-#ifdef ASIO_SOCKETS
+	CUploadDiskIOThread*      uploadDiskIOThread;		// eMule ref: emule.h:92
 	CAsioService*		m_AsioService;
-#endif
 #ifdef ENABLE_UPNP
 	CUPnPControlPoint*	m_upnp;
 	std::vector<CUPnPPortMapping> m_upnpMappings;
@@ -314,13 +334,18 @@ public:
 
 protected:
 
-#ifdef __WXDEBUG__
 	/**
 	 * Handles asserts in a thread-safe manner.
+	 *
+	 * Compiled unconditionally (not just in __WXDEBUG__) so the
+	 * --disable-fatal short-circuit also covers wxWidgets' own
+	 * release-build assertions: Debian / Ubuntu's libwx packages
+	 * leave wxDEBUG_LEVEL=1, which keeps wxASSERT live even in
+	 * release builds and otherwise routes here through wxApp's
+	 * default dialog.
 	 */
 	virtual void OnAssertFailure(const wxChar* file, int line,
 		const wxChar* func, const wxChar* cond, const wxChar* msg);
-#endif
 
 	void OnUDPDnsDone(CMuleInternalEvent& evt);
 	void OnSourceDnsDone(CMuleInternalEvent& evt);
@@ -330,6 +355,7 @@ protected:
 	void OnCoreTimer(CTimerEvent& evt);
 
 	void OnFinishedHashing(CHashingEvent& evt);
+	void OnPartFileHashResult(CPartFileHashResultEvent& evt);
 	void OnFinishedAICHHashing(CHashingEvent& evt);
 	void OnFinishedCompletion(CCompletionEvent& evt);
 	void OnFinishedAllocation(CAllocFinishedEvent& evt);
@@ -400,6 +426,20 @@ class CamuleGuiApp : public CamuleApp, public CamuleGuiBase
 	int OnExit();
 	bool OnInit();
 
+	// Catch alternate quit paths (macOS Dock right-click → Quit)
+	// so we can run ShutDown cleanup even when wxApp skips OnExit.
+	void OnEndSession(wxCloseEvent& evt);
+	void OnQueryEndSession(wxCloseEvent& evt);
+
+#ifdef __WXMAC__
+	// Restore the main window when the user clicks the Dock icon
+	// while no aMule windows are visible. Default wxApp::MacReopenApp
+	// behaviour is to do nothing when the frame is hidden, so a
+	// window hidden via the close button (HideOnClose pref) stays
+	// permanently hidden — the app appears stuck.
+	virtual void MacReopenApp();
+#endif
+
 public:
 
 	virtual int ShowAlert(wxString msg, wxString title, int flags);
@@ -409,7 +449,7 @@ public:
 	wxString GetLog(bool reset = false);
 	wxString GetServerLog(bool reset = false);
 	void AddServerMessageLine(wxString &msg);
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 
@@ -442,7 +482,7 @@ private:
 	virtual int InitGui(bool geometry_enable, wxString &geometry_string);
 	// The GTK wxApps sets its file name conversion properly
 	// in wxApp::Initialize(), while wxAppConsole::Initialize()
-	// does not, leaving wxConvFile being set to wxConvLibc. File
+	// does not, leaving wxConvFileName being set to wxConvLibc. File
 	// name conversion should be set otherwise amuled will abort to
 	// handle non-ASCII file names which monolithic amule can handle.
 	// This function are overridden to perform this.
@@ -454,7 +494,7 @@ public:
 
 	virtual int ShowAlert(wxString msg, wxString title, int flags);
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 DECLARE_APP(CamuleDaemonApp)

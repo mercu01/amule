@@ -85,7 +85,7 @@ public:
 		       const wxSize &size = wxDefaultSize,
 		       long style = wxLC_ICON,
 		       const wxValidator& validator = wxDefaultValidator,
-		       const wxString &name = wxT("mulelistctrl") );
+		       const wxString &name = "mulelistctrl" );
 
 	/**
 	 * Destructor.
@@ -197,7 +197,7 @@ public:
 			  const wxString& heading,
 			  int format = wxLIST_FORMAT_LEFT,
 			  int width = -1,
-			  const wxString& name = wxEmptyString
+			  const wxString& name = ""
 			  );
 
 	/**
@@ -391,7 +391,7 @@ private:
 	 * otherwise, parents may not end up properly located in
 	 * relation to child-items.
 	 */
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, wxIntPtr sortData);
 
 	/** Compares two items in the list, using the current sort sequence. */
 	int CompareItems(wxUIntPtr item1, wxUIntPtr item2);
@@ -483,7 +483,7 @@ private:
 	// True while sorting.
 	bool m_isSorting;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 #endif // MULELISTCTRL_H

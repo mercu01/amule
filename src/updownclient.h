@@ -39,6 +39,7 @@
 #include "ClientRef.h"		// Needed for debug defines
 
 #include <map>
+#include <wx/thread.h>		// Needed for wxMutex
 
 
 class CPartFile;
@@ -128,7 +129,7 @@ private:
 	wxString GetLinkedFrom() {
 		wxString ret;
 		for (std::multiset<wxString>::iterator it = m_linkedFrom.begin(); it != m_linkedFrom.end(); ++it) {
-			ret += *it + wxT(", ");
+			ret += *it + ", ";
 		}
 		return ret;
 	}
@@ -276,8 +277,7 @@ public:
 	uint8		GetObfuscationStatus() const;
 	uint16		GetNextRequestedPart() const;
 
-	void		AddReqBlock(Requested_Block_Struct* reqblock);
-	void		CreateNextBlockPackage();
+	void		AddReqBlock(Requested_Block_Struct* reqblock, bool bSignalIOThread = true);
 	void		SetUpStartTime()		{ m_dwUploadTime = ::GetTickCount(); }
 	void		SetWaitStartTime();
 	void		ClearWaitStartTime();
@@ -457,11 +457,16 @@ public:
 	bool		SendPacket(CPacket* packet, bool delpacket = true, bool controlpacket = true);
 
 	/**
-	 * Safe function for setting the download limit of the socket.
+	 * Per-tick poke from CPartFile::Process. Re-arms this client's
+	 * socket if it suspended last tick because the global
+	 * CDownloadBandwidthThrottler bucket was empty, and returns the
+	 * client's current observed download speed for the per-file
+	 * kBpsDown display sum.
 	 *
-	 * @return Current download speed of the client.
+	 * The download cap (thePrefs::GetMaxDownload()) is enforced
+	 * globally inside the throttler, not per-client.
 	 */
-	float		SetDownloadLimit(uint32 reducedownload);
+	float		TickDownloadAndMeasure();
 
 	/**
 	 * Sends a message to a client
@@ -701,8 +706,6 @@ private:
 	uint32		m_lastRefreshedDLDisplay;
 
 	//upload
-	void CreateStandardPackets(const unsigned char* data,uint32 togo, Requested_Block_Struct* currentblock);
-	void CreatePackedPackets(const unsigned char* data,uint32 togo, Requested_Block_Struct* currentblock);
 	uint32 CalculateScoreInternal();
 
 	uint8		m_nUploadState;
@@ -725,6 +728,12 @@ private:
 
 	std::list<Requested_Block_Struct*>	m_BlockRequests_queue;
 	std::list<Requested_Block_Struct*>	m_DoneBlocks_list;
+	wxMutex								m_blockListLock;	// protects m_BlockRequests_queue, m_DoneBlocks_list, m_addedPayloadQueueSession
+	bool		m_bDisableCompression = false;
+	bool		m_bIOError = false;
+
+	friend class CUploadDiskIOThread;	// disk I/O thread needs direct access to block queues and session counters
+	friend class CUploadQueue;			// upload queue needs access to m_bIOError
 
 	//download
 	bool		m_bRemoteQueueFull;

@@ -38,15 +38,16 @@
 
 #include "ClientList.h"
 
-BEGIN_EVENT_TABLE(CServerWnd,wxPanel)
+wxBEGIN_EVENT_TABLE(CServerWnd,wxPanel)
 	EVT_BUTTON(ID_ADDTOLIST,CServerWnd::OnBnClickedAddserver)
 	EVT_BUTTON(IDC_ED2KDISCONNECT,CServerWnd::OnBnClickedED2KDisconnect)
 	EVT_BUTTON(ID_UPDATELIST,CServerWnd::OnBnClickedUpdateservermetfromurl)
 	EVT_TEXT_ENTER(IDC_SERVERLISTURL,CServerWnd::OnBnClickedUpdateservermetfromurl)
 	EVT_BUTTON(ID_BTN_RESET, CServerWnd::OnBnClickedResetLog)
 	EVT_BUTTON(ID_BTN_RESET_SERVER, CServerWnd::OnBnClickedResetServerLog)
+	EVT_SPLITTER_SASH_POS_CHANGING(ID_SRV_SPLITTER,CServerWnd::OnSashPositionChanging)
 	EVT_SPLITTER_SASH_POS_CHANGED(ID_SRV_SPLITTER,CServerWnd::OnSashPositionChanged)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 
 CServerWnd::CServerWnd(wxWindow* pParent /*=NULL*/, int splitter_pos)
@@ -60,20 +61,25 @@ CServerWnd::CServerWnd(wxWindow* pParent /*=NULL*/, int splitter_pos)
 	serverlistctrl = CastChild( ID_SERVERLIST, CServerListCtrl );
 
 	CastChild( ID_SRV_SPLITTER, wxSplitterWindow )->SetSashPosition(splitter_pos, true);
-	CastChild( ID_SRV_SPLITTER, wxSplitterWindow )->SetSashGravity(0.5f);
+	// Default gravity (0.0) anchors the sash to the top: when the
+	// main window resizes, the server list keeps its height and the
+	// log pane absorbs the extra space. The other amule splitters
+	// (Shared/Transfer/Messages) use the same default and don't
+	// suffer the layout-recalc storm during minimize/restore that
+	// gravity 0.5 produced on Mac and Windows (#334 reproductions).
 	CastChild( IDC_NODESLISTURL, wxTextCtrl )->SetValue(thePrefs::GetKadNodesUrl());
 	CastChild( IDC_SERVERLISTURL, wxTextCtrl )->SetValue(thePrefs::GetEd2kServersUrl());
 
 	// Insert two columns, currently without a header
 	wxListCtrl* ED2KInfoList = CastChild( ID_ED2KINFO, wxListCtrl );
 	wxASSERT(ED2KInfoList);
-	ED2KInfoList->InsertColumn(0, wxEmptyString);
-	ED2KInfoList->InsertColumn(1, wxEmptyString);
+	ED2KInfoList->InsertColumn(0, "");
+	ED2KInfoList->InsertColumn(1, "");
 
 	wxListCtrl* KadInfoList = CastChild( ID_KADINFO, wxListCtrl );
 	wxASSERT(KadInfoList);
-	KadInfoList->InsertColumn(0, wxEmptyString);
-	KadInfoList->InsertColumn(1, wxEmptyString);
+	KadInfoList->InsertColumn(0, "");
+	KadInfoList->InsertColumn(1, "");
 
 	sizer->Show(this,TRUE);
 }
@@ -171,9 +177,9 @@ void CServerWnd::UpdateED2KInfo()
 
 		ED2KInfoList->InsertItem(2, _("ID"));
 		// No need to test the server connect, it's already true
-		ED2KInfoList->SetItem(2, 1, CFormat(wxT("%u")) % theApp->GetED2KID());
+		ED2KInfoList->SetItem(2, 1, CFormat("%u") % theApp->GetED2KID());
 
-		ED2KInfoList->InsertItem(3, wxEmptyString);
+		ED2KInfoList->InsertItem(3, "");
 
 		if (theApp->serverconnect->IsLowID()) {
 			ED2KInfoList->SetItem(1, 1, _("Server")); // LowID, unknown ip
@@ -247,17 +253,17 @@ void CServerWnd::UpdateKadInfo()
 			}
 
 			KadInfoList->InsertItem(next_row, _("IP address:"));
-			KadInfoList->SetItem(next_row++, 1, Uint32toStringIP(theApp->GetKadIPAdress()));
+			KadInfoList->SetItem(next_row++, 1, Uint32toStringIP(theApp->GetKadIPAddress()));
 
 			// Index info
 			KadInfoList->InsertItem(next_row, _("Indexed sources:"));
-			KadInfoList->SetItem(next_row++, 1, CFormat(wxT("%d")) % theApp->GetKadIndexedSources());
+			KadInfoList->SetItem(next_row++, 1, CFormat("%d") % theApp->GetKadIndexedSources());
 			KadInfoList->InsertItem(next_row, _("Indexed keywords:"));
-			KadInfoList->SetItem(next_row++, 1, CFormat(wxT("%d")) % theApp->GetKadIndexedKeywords());
+			KadInfoList->SetItem(next_row++, 1, CFormat("%d") % theApp->GetKadIndexedKeywords());
 			KadInfoList->InsertItem(next_row, _("Indexed notes:"));
-			KadInfoList->SetItem(next_row++, 1, CFormat(wxT("%d")) % theApp->GetKadIndexedNotes());
+			KadInfoList->SetItem(next_row++, 1, CFormat("%d") % theApp->GetKadIndexedNotes());
 			KadInfoList->InsertItem(next_row, _("Indexed load:"));
-			KadInfoList->SetItem(next_row++, 1, CFormat(wxT("%d")) % theApp->GetKadIndexedLoad());
+			KadInfoList->SetItem(next_row++, 1, CFormat("%d") % theApp->GetKadIndexedLoad());
 
 			KadInfoList->InsertItem(next_row, _("Average Users:"));
 			KadInfoList->SetItem(next_row, 1, CastItoIShort(theApp->GetKadUsers()));
@@ -275,10 +281,29 @@ void CServerWnd::UpdateKadInfo()
 	KadInfoList->SetColumnWidth(1, -1);
 }
 
+void CServerWnd::OnSashPositionChanging(wxSplitterEvent& evt)
+{
+	// CHANGING fires only while the user is actively dragging the
+	// sash; mark the drag in flight so OnSashPositionChanged knows
+	// the next CHANGED event came from a real user gesture (and not
+	// a layout reflow during minimize/restore).
+	m_userDraggingSash = true;
+	evt.Skip();
+}
+
 void CServerWnd::OnSashPositionChanged(wxSplitterEvent& WXUNUSED(evt))
 {
-	if (theApp->amuledlg) {
-		theApp->amuledlg->m_srv_split_pos = CastChild( wxT("SrvSplitterWnd"), wxSplitterWindow )->GetSashPosition();
+	wxSplitterWindow* split = CastChild("SrvSplitterWnd", wxSplitterWindow);
+	if (!m_userDraggingSash) {
+		// Layout-induced sash move — don't persist. With the default
+		// sash gravity, these should be rare; previously gravity 0.5
+		// produced a storm of CHANGED events during minimize/restore
+		// reflows that pushed the sash out of the visible range.
+		return;
+	}
+	m_userDraggingSash = false;
+	if (theApp->amuledlg && split) {
+		theApp->amuledlg->m_srv_split_pos = split->GetSashPosition();
 	}
 }
 

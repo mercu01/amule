@@ -64,7 +64,7 @@ public:
                 const wxSize &size = wxDefaultSize,
                 long style = wxLC_ICON,
                 const wxValidator& validator = wxDefaultValidator,
-                const wxString &name = wxT("downloadlistctrl") );
+                const wxString &name = "downloadlistctrl" );
 
 	/**
 	 * Destructor.
@@ -167,7 +167,7 @@ private:
 	 */
 	void	DrawFileStatusBar( const CPartFile* file, wxDC* dc, const wxRect& rect, bool bFlat ) const;
 
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, wxIntPtr sortData);
 	static int Compare( const CPartFile* file1, const CPartFile* file2, long lParamSort );
 
 	// Event-handlers for files
@@ -232,7 +232,7 @@ private:
 	//! The number of displayed files
 	int m_filecount;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 
 };
 

@@ -26,7 +26,14 @@
 #ifndef CLIENTVERSION_H
 #define CLIENTVERSION_H
 
+// RC_INVOKED is defined by windres when processing a .rc resource
+// file. The Windows version-info resource (version.rc.in) only needs
+// the VERSION_MJR/MIN/UPDATE macros below; pulling in config.h drags
+// in -I${CMAKE_BINARY_DIR} which isn't on the windres command line for
+// every Windows target (e.g. ed2k).
+#ifndef RC_INVOKED
 #include "config.h"		// Needed for VERSION
+#endif
 
 // eMule version used on old MuleInfo packet (unimportant).
 #define	CURRENT_VERSION_SHORT			0x47
@@ -38,23 +45,29 @@
 
 // No more Mod Version unless we're cvs
 
-// RELEASERS: REMOVE THE DEFINE ON THE RELEASES, PLEASE
-// AND FIX THE MOD_VERSION_LONG
-
+// __SVN__ marks dev builds (MOD_VERSION_LONG = "aMule SVN").  CMake
+// derives AMULE_TAGGED_RELEASE from `git describe --tags --exact-match`
+// at configure time and forwards it via config.h, which makes the
+// __SVN__ flag self-managing: tagged release builds suppress it
+// automatically; source/dev builds keep it.  Manual override is still
+// possible by setting -DAMULE_TAGGED_RELEASE on the cmake command line
+// (e.g. when building from a tarball with no .git directory).
+#ifndef AMULE_TAGGED_RELEASE
 #define __SVN__
+#endif
 
 #ifndef VERSION
-	#define VERSION "2.4.0"
+	#define VERSION "3.0.0-dev"
 #endif
 
 #ifdef __SVN__
-	#define	MOD_VERSION_LONG		wxT("aMule SVN")
+	#define	MOD_VERSION_LONG		"aMule SVN"
 #else
-	#define	MOD_VERSION_LONG		(wxT("aMule ") wxT(VERSION))
+	#define	MOD_VERSION_LONG		("aMule " VERSION)
 #endif
 
-#define	VERSION_MJR		2
-#define	VERSION_MIN		4
+#define	VERSION_MJR		3
+#define	VERSION_MIN		0
 #define	VERSION_UPDATE		0
 
 #ifndef PACKAGE

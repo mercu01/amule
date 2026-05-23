@@ -1,5 +1,5 @@
 #include <winver.h>
-#include "src/include/common/ClientVersion.h"
+#include "@CMAKE_SOURCE_DIR@/src/include/common/ClientVersion.h"
 
 #ifdef __PRERELEASE__
 #define VER_PRERELEASE	VS_FF_PRERELEASE
@@ -20,6 +20,23 @@
 #define VER_DEBUG	0
 #endif
 
+// Default per-binary identification strings. These were referenced by
+// the StringFileInfo block below but never defined anywhere -- the file
+// silently never compiled on cmake < 3.20 (CMP0115 OLD re-routed the
+// missing ${CMAKE_SOURCE_DIR}/version.rc to version.rc.in and dropped
+// it as an unrecognised extension), so the mismatch went unnoticed.
+// Defining defaults here keeps every Windows aMule binary tagged
+// consistently; per-target overrides could come later via -D flags.
+#ifndef VER_FILEDESCRIPTION_STR
+#define VER_FILEDESCRIPTION_STR		"aMule eDonkey/Kademlia client"
+#endif
+#ifndef VER_INTERNALNAME_STR
+#define VER_INTERNALNAME_STR		"aMule"
+#endif
+#ifndef VER_ORIGINALFILENAME_STR
+#define VER_ORIGINALFILENAME_STR	"amule.exe"
+#endif
+
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION	VERSION_MJR, VERSION_MIN, VERSION_UPDATE, VER_RELEASE
 	PRODUCTVERSION	VERSION_MJR, VERSION_MIN, VERSION_UPDATE, VER_RELEASE
@@ -33,7 +50,7 @@ BEGIN
 	BEGIN
 		BLOCK "040904b0"
 		BEGIN
-			VALUE	"Comments",		"http://www.amule.org/"
+			VALUE	"Comments",		"https://amule-org.github.io"
 			VALUE	"FileDescription",	VER_FILEDESCRIPTION_STR
 			VALUE	"FileVersion",		VER_PRODUCTVERSION_STR
 			VALUE	"InternalName",		VER_INTERNALNAME_STR

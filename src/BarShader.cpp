@@ -170,7 +170,9 @@ void CBarShader::Draw( wxDC* dc, int iLeft, int iTop, bool bFlat )
 	}
 
 	// Render the bar into a raw buffer
-	unsigned char * buf = (unsigned char *) malloc(m_Width * m_Height * 3);
+	unsigned char * buf = (unsigned char *) malloc(
+		static_cast<size_t>(m_Width) *
+		static_cast<size_t>(m_Height) * 3u);
 
 	if (bFlat) {
 		// draw flat bar
@@ -189,7 +191,8 @@ void CBarShader::Draw( wxDC* dc, int iLeft, int iTop, bool bFlat )
 			std::memcpy(buf + idx, buf, idx);
 		}
 		if (y < m_Height) {
-			std::memcpy(buf + idx, buf, (m_Height - y) * linelength);
+			std::memcpy(buf + idx, buf,
+				static_cast<size_t>(m_Height - y) * linelength);
 		}
 	} else {
 		// draw rounded bar

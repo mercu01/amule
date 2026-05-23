@@ -1,42 +1,31 @@
-if (GEOIP_INCLUDE_DIR)
-	set (CMAKE_REQUIRED_INCLUDES ${GEOIP_INCLUDE_DIR})
-endif()
+find_path (MAXMINDDB_INCLUDE_DIR maxminddb.h)
+find_library (MAXMINDDB_LIB maxminddb)
 
-if (NOT GEOIP_LIB)
-	include (CheckIncludeFile)
+if (MAXMINDDB_INCLUDE_DIR AND MAXMINDDB_LIB)
+	message (STATUS "libmaxminddb found, IP2Country support enabled")
 
-
-	check_include_file (GeoIP.h GEOIP_H)
-
-	if (GEOIP_H)
-		find_library (GEOIP_LIB GeoIP)
-
-		if (NOT GEOIP_LIB AND GEOIP_INCLUDE_DIR)
-			find_library (GEOIP_LIB GeoIP
-				PATHS ${GEOIP_INCLUDE_DIR}
-			)
-		endif()
-
-		if (NOT GEOIP_LIB)
-			set (ENABLE_IP2COUNTRY FALSE)
-			message (STATUS "GeoIP lib not found, disabling support")
-		else()
-			message (STATUS "GeoIP found useable")
-		endif()
+	add_library (MaxMindDB::Shared UNKNOWN IMPORTED)
+	set_target_properties (MaxMindDB::Shared PROPERTIES
+		INTERFACE_COMPILE_DEFINITIONS "ENABLE_IP2COUNTRY"
+		INTERFACE_INCLUDE_DIRECTORIES "${MAXMINDDB_INCLUDE_DIR}"
+		IMPORTED_LOCATION "${MAXMINDDB_LIB}"
+	)
+else()
+	# This file is only included from the top-level CMakeLists.txt when
+	# ENABLE_IP2COUNTRY is already true — i.e., the user explicitly asked
+	# for the feature. Honour the user's intent: fail loudly instead of
+	# silently downgrading to ENABLE_IP2COUNTRY=FALSE, which would mask
+	# the missing dep behind a green build with the feature mysteriously
+	# absent at runtime.
+	if (NOT MAXMINDDB_INCLUDE_DIR)
+		message (FATAL_ERROR "ENABLE_IP2COUNTRY=YES but maxminddb.h was not found. "
+			"Install libmaxminddb headers (Debian/Ubuntu: libmaxminddb-dev, "
+			"Fedora: libmaxminddb-devel, macOS Homebrew: libmaxminddb, "
+			"MSYS2: mingw-w64-x86_64-libmaxminddb), or pass -DENABLE_IP2COUNTRY=NO "
+			"to disable the feature.")
 	else()
-		set (ENABLE_IP2COUNTRY FALSE)
-		message (STATUS "GeoIP headers not found, disabling support")
+		message (FATAL_ERROR "ENABLE_IP2COUNTRY=YES but the libmaxminddb shared "
+			"library was not found. Install the runtime package alongside the "
+			"headers, or pass -DENABLE_IP2COUNTRY=NO to disable the feature.")
 	endif()
 endif()
-
-if (ENABLE_IP2COUNTRY)
-	add_library (GeoIP::Shared UNKNOWN IMPORTED)
-
-	set_target_properties (GeoIP::Shared PROPERTIES
-		INTERFACE_COMPILE_DEFINITIONS "ENABLE_IP2COUNTRY"
-		INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_REQUIRED_INCLUDES}"
-		IMPORTED_LOCATION "${GEOIP_LIB}"
-	)
-endif()
-
-unset (CMAKE_REQUIRED_INCLUDES)

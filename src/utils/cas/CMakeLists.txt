@@ -11,7 +11,7 @@ add_executable (cas
 
 if (WIN32)
 	target_sources (cas
-		${CMAKE_SOURCE_DIR}/version.rc
+		PRIVATE ${CMAKE_BINARY_DIR}/version.rc
 	)
 endif()
 
@@ -20,8 +20,14 @@ target_include_directories (cas
 )
 
 target_link_libraries (cas
-	PkgConfig::gdlib
+	PRIVATE PkgConfig::gdlib
 )
+
+if (APPLE)
+	target_link_libraries (cas
+		PRIVATE "-framework CoreServices"
+	)
+endif()
 
 install (TARGETS cas
 	RUNTIME DESTINATION bin

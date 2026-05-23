@@ -46,11 +46,12 @@
 // just to keep compiler happy
 static wxCommandEvent nullEvent;
 
-BEGIN_EVENT_TABLE(CSearchDlg, wxPanel)
+wxBEGIN_EVENT_TABLE(CSearchDlg, wxPanel)
 	EVT_BUTTON(		IDC_STARTS,		CSearchDlg::OnBnClickedStart)
 	EVT_TEXT_ENTER(	IDC_SEARCHNAME,	CSearchDlg::OnBnClickedStart)
 
 	EVT_BUTTON(IDC_CANCELS, CSearchDlg::OnBnClickedStop)
+	EVT_BUTTON(IDC_SEARCHMORE, CSearchDlg::OnBnClickedSearchMore)
 
 	EVT_LIST_ITEM_SELECTED(ID_SEARCHLISTCTRL, CSearchDlg::OnListItemSelected)
 
@@ -65,17 +66,17 @@ BEGIN_EVENT_TABLE(CSearchDlg, wxPanel)
 	EVT_NOTEBOOK_PAGE_CHANGED(ID_NOTEBOOK, CSearchDlg::OnSearchPageChanged)
 
 	// Event handlers for the parameter fields getting changed
-	EVT_CUSTOM( wxEVT_COMMAND_TEXT_UPDATED,     IDC_SEARCHNAME, CSearchDlg::OnFieldChanged)
-	EVT_CUSTOM( wxEVT_COMMAND_TEXT_UPDATED,     IDC_EDITSEARCHEXTENSION, CSearchDlg::OnFieldChanged)
-	EVT_CUSTOM( wxEVT_COMMAND_SPINCTRL_UPDATED, wxID_ANY, CSearchDlg::OnFieldChanged)
-	EVT_CUSTOM( wxEVT_COMMAND_CHOICE_SELECTED, wxID_ANY, CSearchDlg::OnFieldChanged)
+	EVT_CUSTOM( wxEVT_TEXT,     IDC_SEARCHNAME, CSearchDlg::OnFieldChanged)
+	EVT_CUSTOM( wxEVT_TEXT,     IDC_EDITSEARCHEXTENSION, CSearchDlg::OnFieldChanged)
+	EVT_CUSTOM( wxEVT_SPINCTRL, wxID_ANY, CSearchDlg::OnFieldChanged)
+	EVT_CUSTOM( wxEVT_CHOICE, wxID_ANY, CSearchDlg::OnFieldChanged)
 
 	// Event handlers for the filter fields getting changed.
 	EVT_TEXT_ENTER(ID_FILTER_TEXT,	CSearchDlg::OnFilteringChange)
 	EVT_CHECKBOX(ID_FILTER_INVERT,	CSearchDlg::OnFilteringChange)
 	EVT_CHECKBOX(ID_FILTER_KNOWN,	CSearchDlg::OnFilteringChange)
 	EVT_BUTTON(ID_FILTER,			CSearchDlg::OnFilteringChange)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 
 
@@ -120,8 +121,8 @@ CSearchDlg::CSearchDlg(wxWindow* pParent)
 	CastChild( IDC_SEARCHMAXSIZE, wxChoice )->SetSelection(2);
 
 	// Not there initially.
-	s_searchsizer->Show(s_extendedsizer, false);
-	s_searchsizer->Show(s_filtersizer, false);
+	s_search_sizer->Show(s_extended_sizer, false);
+	s_search_sizer->Show(s_filter_sizer, false);
 
 	Layout();
 }
@@ -204,7 +205,7 @@ void CSearchDlg::OnListItemSelected(wxListEvent& event)
 
 void CSearchDlg::OnExtendedSearchChange(wxCommandEvent& event)
 {
-	s_searchsizer->Show(s_extendedsizer, event.IsChecked());
+	s_search_sizer->Show(s_extended_sizer, event.IsChecked());
 
 	Layout();
 }
@@ -212,7 +213,7 @@ void CSearchDlg::OnExtendedSearchChange(wxCommandEvent& event)
 
 void CSearchDlg::OnFilterCheckChange(wxCommandEvent& event)
 {
-	s_searchsizer->Show(s_filtersizer, event.IsChecked());
+	s_search_sizer->Show(s_filter_sizer, event.IsChecked());
 	Layout();
 
 	int nPages = m_notebook->GetPageCount();
@@ -264,6 +265,13 @@ void CSearchDlg::OnSearchPageChanged(wxBookCtrlEvent& WXUNUSED(evt))
 
 		bool enable = (ctrl->GetSelectedItemCount() > 0);
 		FindWindow(IDC_SDOWNLOAD)->Enable( enable );
+
+		// "More" is Kad-only — enable when this tab's searchID still
+		// corresponds to an active Kad search.
+		FindWindow(IDC_SEARCHMORE)->Enable(
+			theApp->searchlist->IsKadSearch((uint32_t)ctrl->GetSearchId()));
+	} else {
+		FindWindow(IDC_SEARCHMORE)->Enable(false);
 	}
 }
 
@@ -281,7 +289,16 @@ void CSearchDlg::OnBnClickedStart(wxCommandEvent& WXUNUSED(evt))
 	// We mustn't search more often than once every 2 secs
 	if ((GetTickCount() - m_last_search_time) > 2000) {
 		m_last_search_time = GetTickCount();
-		OnBnClickedStop(nullEvent);
+		// Stop previous ED2K search state only (the server has a
+		// single in-flight search packet per session and m_searchPacket
+		// has to be reset).  Do NOT stop a previous Kad search: the
+		// Kad data layer (CSearchManager::m_searches) supports multiple
+		// concurrent searches keyed by target hash, and stopping the
+		// previous one immediately deletes its CSearch (which strips
+		// the "!" tab indicator and halts result delivery).
+		// Unconditionally calling OnBnClickedStop here was the reason
+		// starting a second Kad search appeared to cancel the first.
+		theApp->searchlist->StopSearch(/*globalOnly=*/true);
 		StartNewSearch();
 	}
 }
@@ -345,7 +362,7 @@ bool CSearchDlg::CheckTabNameExists(const wxString& searchString)
 	int nPages = m_notebook->GetPageCount();
 	for ( int i = 0; i < nPages; i++ ) {
 		// The BeforeLast(' ') is to strip the hit-count from the name
-		if ( m_notebook->GetPageText(i).BeforeLast(wxT(' ')) == searchString ) {
+		if ( m_notebook->GetPageText(i).BeforeLast(' ') == searchString ) {
 			return true;
 		}
 	}
@@ -371,6 +388,12 @@ void CSearchDlg::CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID)
 
 	Layout();
 	FindWindow(IDC_CLEAR_RESULTS)->Enable(true);
+
+	// AddPage above made the new tab the selected one; defer to
+	// IsKadSearch on its searchID so a freshly-created ED2K tab leaves
+	// the button disabled.
+	FindWindow(IDC_SEARCHMORE)->Enable(
+		theApp->searchlist->IsKadSearch((uint32_t)nSearchID));
 }
 
 
@@ -378,6 +401,41 @@ void CSearchDlg::OnBnClickedStop(wxCommandEvent& WXUNUSED(evt))
 {
 	theApp->searchlist->StopSearch();
 	ResetControls();
+}
+
+
+void CSearchDlg::OnBnClickedSearchMore(wxCommandEvent& WXUNUSED(evt))
+{
+	// "More" button: ask the currently-selected Kad search for more
+	// results.  Uses CSearch::RequestMoreResults() (which dispatches
+	// the existing KADEMLIA_FIND_VALUE_MORE wide-reask variant) to
+	// widen the search frontier — peers we already queried return up
+	// to 11 closer contacts instead of 2, and the existing
+	// ProcessResponse cascade then queries the new neighbours with
+	// FIND_VALUE.  Bounded per-search by KADEMLIA_FIND_VALUE_MORE_REASKS
+	// (4) inside CSearch.
+	//
+	// For ED2K Local / Global searches there is currently no equivalent
+	// — the "More" button silently no-ops on non-Kad tabs.  This mirrors
+	// the prior behaviour of the (never-wired) ED2K-only stub.
+	int sel = m_notebook->GetSelection();
+	if (sel == -1) {
+		return;
+	}
+	CSearchListCtrl* page = dynamic_cast<CSearchListCtrl*>(m_notebook->GetPage(sel));
+	if (!page) {
+		return;
+	}
+	const uint32_t searchID = (uint32_t)page->GetSearchId();
+	if (theApp->searchlist->RequestMoreResults(searchID)) {
+		AddLogLineN(_("Kad search: requested wider results from one more peer."));
+	} else {
+		// Either the active tab isn't a Kad search, the per-search cap is
+		// hit, or there is no responded peer left to reask.  Surface that
+		// to the user as a normal log line (not debug) so a click without
+		// effect is at least visible.
+		AddLogLineN(_("Kad search: no peer left to reask for more results (cap reached or no responses yet)."));
+	}
 }
 
 
@@ -403,9 +461,20 @@ void CSearchDlg::KadSearchEnd(uint32 id)
 			dynamic_cast<CSearchListCtrl*>(m_notebook->GetPage(i));
 		if (page->GetSearchId() == id || id == 0) {	// 0: just update all pages (there is only one KAD search running at a time anyway)
 			wxString rest;
-			if (m_notebook->GetPageText(i).StartsWith(wxT("!"),&rest)) {
+			if (m_notebook->GetPageText(i).StartsWith("!",&rest)) {
 				m_notebook->SetPageText(i,rest);
 			}
+		}
+	}
+
+	// If the search that just ended is the one currently shown, the
+	// "More" button now has no candidate to widen — disable it.
+	int sel = m_notebook->GetSelection();
+	if (sel != -1) {
+		CSearchListCtrl* page = dynamic_cast<CSearchListCtrl*>(m_notebook->GetPage(sel));
+		if (page) {
+			FindWindow(IDC_SEARCHMORE)->Enable(
+				theApp->searchlist->IsKadSearch((uint32_t)page->GetSearchId()));
 		}
 	}
 }
@@ -430,13 +499,17 @@ void CSearchDlg::OnBnClickedClear(wxCommandEvent& WXUNUSED(ev))
 
 	FindWindow(IDC_CLEAR_RESULTS)->Enable(FALSE);
 	FindWindow(IDC_SDOWNLOAD)->Enable(FALSE);
+	FindWindow(IDC_SEARCHMORE)->Enable(FALSE);
 }
 
 
 void CSearchDlg::StartNewSearch()
 {
+	// Stay in the bottom half of the uint32 search-ID space so the
+	// ed2k-allocated IDs here can never collide with Kad-allocated IDs
+	// from CSearchManager::m_nextID, which starts at 0x80000000
 	static uint32 m_nSearchID = 0;
-	m_nSearchID++;
+	m_nSearchID = (m_nSearchID + 1) & 0x7fffffff;
 
 	FindWindow(IDC_STARTS)->Disable();
 	FindWindow(IDC_SDOWNLOAD)->Disable();
@@ -487,7 +560,7 @@ void CSearchDlg::StartNewSearch()
 		case 7:	params.typeText = ED2KFTSTR_VIDEO;	break;
 		default:
 			AddDebugLogLineC( logGeneral,
-				CFormat( wxT("Warning! Unknown search-category (%s) selected!") )
+				CFormat( "Warning! Unknown search-category (%s) selected!" )
 					% params.typeText
 			);
 			break;
@@ -533,8 +606,8 @@ void CSearchDlg::StartNewSearch()
 		FindWindow(IDC_CANCELS)->Disable();
 	} else {
 		CreateNewTab(
-			((search_type == KadSearch) ? wxT("!") : wxEmptyString) +
-				params.searchString + wxT(" (0)"),
+			((search_type == KadSearch) ? "!" : "") +
+				params.searchString + " (0)",
 			real_id);
 	}
 }
@@ -544,16 +617,16 @@ void CSearchDlg::UpdateHitCount(CSearchListCtrl* page)
 {
 	for ( uint32 i = 0; i < (uint32)m_notebook->GetPageCount(); ++i ) {
 		if ( m_notebook->GetPage(i) == page ) {
-			wxString searchtxt = m_notebook->GetPageText(i).BeforeLast(wxT(' '));
+			wxString searchtxt = m_notebook->GetPageText(i).BeforeLast(' ');
 
 			if ( !searchtxt.IsEmpty() ) {
 				size_t shown = page->GetItemCount();
 				size_t hidden = page->GetHiddenItemCount();
 
 				if (hidden) {
-					searchtxt += CFormat(wxT(" (%u/%u)")) % shown % (shown + hidden);
+					searchtxt += CFormat(" (%u/%u)") % shown % (shown + hidden);
 				} else {
-					searchtxt += CFormat(wxT(" (%u)")) % shown;
+					searchtxt += CFormat(" (%u)") % shown;
 				}
 
 				m_notebook->SetPageText(i, searchtxt);

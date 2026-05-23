@@ -132,7 +132,7 @@ static EFileType GuessFiletype(const wxString& file)
  * Replaces the zip-archive with "guarding.p2p" or "ipfilter.dat",
  * if either of those files are found in the archive.
  */
-static bool UnpackZipFile(const wxString& file, const wxChar* files[])
+static bool UnpackZipFile(const wxString& file, const char* files[])
 {
 	wxTempFile target(file);
 	CSmartPtr<wxZipEntry> entry;
@@ -155,6 +155,20 @@ static bool UnpackZipFile(const wxString& file, const wxChar* files[])
 				char buffer[10240];
 				while (!zip.Eof()) {
 					zip.Read(buffer, sizeof(buffer));
+					if (zip.LastRead() == 0) {
+						// Stream stuck (e.g. unsupported compression
+						// method on this entry). wxZipInputStream
+						// doesn't advance its EOF flag in this case,
+						// so the original loop spun forever -- on a
+						// malformed eMule-security IPFilter feed it
+						// emitted gigabytes of "Error: unsupported
+						// Zip compression method" inside seconds
+						// (#376). Bail and let the caller treat this
+						// download as failed; the next fetch will
+						// pick up the clean copy.
+						run = false;
+						break;
+					}
 					target.Write(buffer, zip.LastRead());
 				}
 				run = false;
@@ -181,7 +195,7 @@ static bool UnpackGZipFile(const wxString& file)
 	bool write = false;
 
 #ifdef __WXMAC__
-	// AddDebugLogLineN( logFileIO, wxT("Reading gzip stream") );
+	// AddDebugLogLineN( logFileIO, "Reading gzip stream" );
 
 	gzFile inputFile = gzopen(filename2char(file), "rb");
 	if (inputFile != NULL) {
@@ -190,7 +204,7 @@ static bool UnpackGZipFile(const wxString& file)
 
 		while (int bytesRead = gzread(inputFile, buffer, sizeof(buffer))) {
 			if (bytesRead > 0) {
-				// AddDebugLogLineN(logFileIO, CFormat(wxT("Read %u bytes")) % bytesRead);
+				// AddDebugLogLineN(logFileIO, CFormat("Read %u bytes") % bytesRead);
 				target.Write(buffer, bytesRead);
 			} else if (bytesRead < 0) {
 				wxString errString;
@@ -202,20 +216,20 @@ static bool UnpackGZipFile(const wxString& file)
 					errString = wxString::FromAscii(gzerrstr);
 				}
 
-				// AddDebugLogLineN( logFileIO, wxT("Error reading gzip stream (") + errString + wxT(")") );
+				// AddDebugLogLineN( logFileIO, "Error reading gzip stream (" + errString + ")" );
 				write = false;
 				break;
 			}
 		}
 
-		// AddDebugLogLineN( logFileIO, wxT("End reading gzip stream") );
+		// AddDebugLogLineN( logFileIO, "End reading gzip stream" );
 		gzclose(inputFile);
 	} else {
-		// AddDebugLogLineN( logFileIO, wxT("Error opening gzip file (") + wxString(wxSysErrorMsg()) + wxT(")") );
+		// AddDebugLogLineN( logFileIO, "Error opening gzip file (" + wxString(wxSysErrorMsg()) + ")" );
 	}
 #else
 	{
-		// AddDebugLogLineN( logFileIO, wxT("Reading gzip stream") );
+		// AddDebugLogLineN( logFileIO, "Reading gzip stream" );
 
 		wxFileInputStream source(file);
 		wxZlibInputStream inputStream(source);
@@ -224,7 +238,7 @@ static bool UnpackGZipFile(const wxString& file)
 			char buffer[10240];
 			inputStream.Read(buffer, sizeof(buffer));
 
-			// AddDebugLogLineN(logFileIO, CFormat(wxT("Read %u bytes")) % inputStream.LastRead());
+			// AddDebugLogLineN(logFileIO, CFormat("Read %u bytes") % inputStream.LastRead());
 			if (inputStream.LastRead()) {
 				target.Write(buffer, inputStream.LastRead());
 			} else {
@@ -232,7 +246,7 @@ static bool UnpackGZipFile(const wxString& file)
 			}
 		};
 
-		// AddDebugLogLineN( logFileIO, wxT("End reading gzip stream") );
+		// AddDebugLogLineN( logFileIO, "End reading gzip stream" );
 
 		write = inputStream.IsOk() || inputStream.Eof();
 	}
@@ -240,14 +254,14 @@ static bool UnpackGZipFile(const wxString& file)
 
 	if (write) {
 		target.Commit();
-		// AddDebugLogLineN( logFileIO, wxT("Committed gzip stream") );
+		// AddDebugLogLineN( logFileIO, "Committed gzip stream" );
 	}
 
 	return write;
 }
 
 
-UnpackResult UnpackArchive(const CPath& path, const wxChar* files[])
+UnpackResult UnpackArchive(const CPath& path, const char* files[])
 {
 	const wxString file = path.GetRaw();
 

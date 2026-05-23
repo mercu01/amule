@@ -3,7 +3,37 @@ if (SEARCH_DIR_UPNP)
 	set (CMAKE_PREFIX_PATH ${SEARCH_DIR_UPNP})
 endif()
 
-find_package (UPNP CONFIG)
+# Some distro packages ship a broken UPNP.cmake that lists non-existent paths
+# (e.g. /usr/COMPONENT, /mingw64/COMPONENT) in INTERFACE_INCLUDE_DIRECTORIES.
+# Observed on Ubuntu 25.10 libupnp-dev 1.14.x and MSYS2 mingw-w64-pupnp 1.14.x.
+# Detect this before loading the broken config by inspecting the targets file,
+# and fall through to pkg-config if affected.
+find_file (_upnp_cmake_targets "UPNP.cmake"
+	PATH_SUFFIXES lib/cmake/UPNP lib64/cmake/UPNP
+	              lib/x86_64-linux-gnu/cmake/UPNP
+	              lib/aarch64-linux-gnu/cmake/UPNP)
+if (_upnp_cmake_targets)
+	file (READ "${_upnp_cmake_targets}" _upnp_cmake_content)
+	if (_upnp_cmake_content MATCHES "INTERFACE_INCLUDE_DIRECTORIES.*COMPONENT")
+		message (STATUS "Broken UPNP CMake config detected (bad include paths) — using pkg-config instead")
+		set (_upnp_skip_config TRUE)
+	endif()
+	unset (_upnp_cmake_content)
+endif()
+unset (_upnp_cmake_targets CACHE)
+
+if (NOT _upnp_skip_config)
+	# MSYS2's pupnp UPNPConfig.cmake references Threads::Threads in its link
+	# interface without calling find_package(Threads) itself — load it first
+	# so the UPNP::Shared target resolves correctly.
+	find_package (Threads REQUIRED)
+	find_package (UPNP CONFIG)
+endif()
+unset (_upnp_skip_config)
+
+if (UPNP_CONFIG)
+	set (LIBUPNP_VERSION ${UPNP_VERSION})
+endif()
 
 if (NOT UPNP_CONFIG)
 	include (FindPkgConfig)
@@ -11,7 +41,13 @@ if (NOT UPNP_CONFIG)
 	unset (CMAKE_PREFIX_PATH)
 
 	if (LIBUPNP_FOUND)
-		add_library (UPNP::Shared SHARED IMPORTED)
+		if (MINGW)
+			# On MinGW, SHARED IMPORTED without IMPORTED_IMPLIB makes
+			# Debug-config lookups resolve to UPNP::Shared-NOTFOUND.
+			add_library (UPNP::Shared UNKNOWN IMPORTED)
+		else()
+			add_library (UPNP::Shared SHARED IMPORTED)
+		endif()
 
 		set_target_properties (UPNP::Shared PROPERTIES
 			IMPORTED_LOCATION "${pkgcfg_lib_LIBUPNP_upnp}"
@@ -19,8 +55,19 @@ if (NOT UPNP_CONFIG)
 			INTERFACE_LINK_LIBRARIES "${LIBUPNP_LIBRARIES}"
 		)
 	elseif (NOT LIBUPNP_FOUND AND NOT DOWNLOAD_AND_BUILD_DEPS)
-		set (ENABLE_UPNP FALSE)
-		message (STATUS "lib-upnp not, disabling upnp")
+		# This file is only included from the top-level CMakeLists.txt
+		# when ENABLE_UPNP is true — i.e. the user explicitly asked
+		# for the feature and is not opting into the download-and-build
+		# fallback. Honour the user's intent: fail loudly instead of
+		# silently downgrading to ENABLE_UPNP=FALSE, which would mask
+		# the missing dep behind a green build with the feature
+		# mysteriously absent at runtime.
+		message (FATAL_ERROR "ENABLE_UPNP=YES but libupnp was not found. "
+			"Install libupnp headers + library (Debian/Ubuntu: libupnp-dev, "
+			"Fedora: libupnp-devel, macOS Homebrew: libupnp, "
+			"MSYS2: mingw-w64-x86_64-pupnp), or pass -DENABLE_UPNP=NO to "
+			"disable the feature, or pass -DDOWNLOAD_AND_BUILD_DEPS=YES "
+			"to have CMake build libupnp from source.")
 	elseif (NOT LIBUPNP_FOUND AND DOWNLOAD_AND_BUILD_DEPS)
 		CmDaB_install ("pupnp")
 	endif()

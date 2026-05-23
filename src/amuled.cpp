@@ -49,6 +49,7 @@
 
 #include "Preferences.h"		// Needed for CPreferences
 #include "PartFile.h"			// Needed for CPartFile
+#include "PartFileHashThread.h"	// Needed for EVT_PARTFILE_HASH_RESULT
 #include "Logger.h"
 #include <common/Format.h>
 #include "InternalEvents.h"		// Needed for wxEVT_*
@@ -71,21 +72,7 @@
 	#include <wx/ffile.h>
 #endif
 
-BEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
-
-#ifndef ASIO_SOCKETS
-	//
-	// Socket handlers
-	//
-
-	// Listen Socket
-	EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleDaemonApp::ListenSocketHandler)
-
-	// UDP Socket (servers)
-	EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
-	// UDP Socket (clients)
-	EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
-#endif
+wxBEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
 
 	// Socket timer (TCP)
 	EVT_MULE_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleDaemonApp::OnTCPTimer)
@@ -106,6 +93,9 @@ BEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
 	EVT_MULE_HASHING(CamuleDaemonApp::OnFinishedHashing)
 	EVT_MULE_AICH_HASHING(CamuleDaemonApp::OnFinishedAICHHashing)
 
+	// CPartFileHashThread per-part result
+	EVT_PARTFILE_HASH_RESULT(CamuleDaemonApp::OnPartFileHashResult)
+
 	// File completion ended notifier
 	EVT_MULE_FILE_COMPLETED(CamuleDaemonApp::OnFinishedCompletion)
 
@@ -114,7 +104,7 @@ BEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
 
 	// Disk space preallocation finished
 	EVT_MULE_ALLOC_FINISHED(CamuleDaemonApp::OnFinishedAllocation)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 IMPLEMENT_APP(CamuleDaemonApp)
 
@@ -130,7 +120,7 @@ static BOOL CtrlHandler(DWORD fdwCtrlType)
 		case CTRL_CLOSE_EVENT:
 		case CTRL_BREAK_EVENT:
 			// handle these
-			AddLogLineNS(wxT("Received break event, exit main loop"));
+			AddLogLineNS("Received break event, exit main loop");
 			theApp->ExitMainLoop();
 			return TRUE;
 			break;
@@ -152,7 +142,7 @@ int CamuleDaemonApp::OnRun()
 		AddLogLineCS(_("ERROR: aMule daemon cannot be used when external connections are disabled. To enable External Connections, use either a normal aMule, start amuled with the option --ec-config or set the key \"AcceptExternalConnections\" to 1 in the file ~/.aMule/amule.conf"));
 		return 0;
 	} else if (thePrefs::ECPassword().IsEmpty()) {
-		AddLogLineCS(_("ERROR: A valid password is required to use external connections, and aMule daemon cannot be used without external connections. To run aMule daemon, you must set the \"ECPassword\" field in the file ~/.aMule/amule.conf with an appropriate value. Execute amuled with the flag --ec-config to set the password. More information can be found at http://wiki.amule.org"));
+		AddLogLineCS(_("ERROR: A valid password is required to use external connections, and aMule daemon cannot be used without external connections. To run aMule daemon, you must set the \"ECPassword\" field in the file ~/.aMule/amule.conf with an appropriate value. Execute amuled with the flag --ec-config to set the password. More information can be found at https://github.com/amule-org/amule/wiki"));
 		return 0;
 	}
 
@@ -208,8 +198,8 @@ int CamuleDaemonApp::InitGui(bool ,wxString &)
 		// can easily manage the process
 		//
 		if (!m_PidFile.IsEmpty()) {
-			wxString temp = CFormat(wxT("%d\n")) % pid;
-			wxFFile ff(m_PidFile, wxT("w"));
+			wxString temp = CFormat("%d\n") % pid;
+			wxFFile ff(m_PidFile, "w");
 			if (!ff.Error()) {
 				ff.Write(temp);
 				ff.Close();
@@ -239,7 +229,7 @@ bool CamuleDaemonApp::Initialize(int& argc_, wxChar **argv_)
 
         // But don't consider ASCII in this case.
 	if ( !encName.empty() ) {
-		if ( encName == wxT("US-ASCII") ) {
+		if ( encName == "US-ASCII" ) {
 			// This means US-ASCII when returned
 			// from GetEncodingFromName().
 			encName.clear();
@@ -249,7 +239,7 @@ bool CamuleDaemonApp::Initialize(int& argc_, wxChar **argv_)
 
 	// in this case, UTF-8 is used by default.
         if ( encName.empty() ) {
-		encName = wxT("UTF-8");
+		encName = "UTF-8";
 	}
 
 	static wxConvBrokenFileNames fileconv(encName);
@@ -272,7 +262,7 @@ int CamuleDaemonApp::ShowAlert(wxString msg, wxString title, int flags)
 	if ( flags | wxICON_ERROR ) {
 		title = CFormat(_("ERROR: %s")) % title;
 	}
-	AddLogLineCS(title + wxT(" ") + msg);
+	AddLogLineCS(title + " " + msg);
 
 	return 0;	// That's neither yes nor no, ok, cancel
 }

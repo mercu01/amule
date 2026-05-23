@@ -32,7 +32,7 @@
 
 #include <common/Format.h>			// Needed for CFormat
 
-#define a_brackets_b(a,b) (a + wxT(" (") + b + wxT(")"))
+#define a_brackets_b(a,b) (a + " (" + b + ")")
 
 #endif /* !CLIENT_GUI */
 
@@ -291,19 +291,19 @@ wxString CStatTreeItemCounterTmpl<_Tp>::GetDisplayString() const
 	wxString my_label = wxGetTranslation(m_label);
 	// This is needed for client names, for example
 	if (my_label == m_label) {
-		if (m_label.Right(4) == wxT(": %s")) {
+		if (m_label.Right(4) == ": %s") {
 			my_label = wxGetTranslation(
 				m_label.Mid(0, m_label.Length() - 4)) +
-				wxString(wxT(": %s"));
+				wxString(": %s");
 		}
 	}
 	CFormat label(my_label);
 	if (m_displaymode == dmBytes) {
 		return label % CastItoXBytes(m_value);
 	} else {
-		wxString result = CFormat(wxT("%u")) % m_value;
+		wxString result = CFormat("%u") % m_value;
 		if ((m_flags & stShowPercent) && m_parent) {
-			result += CFormat(wxT(" (%.2f%%)")) % ((double(m_value) / dynamic_cast<CStatTreeItemCounterTmpl<_Tp>*>(m_parent)->m_value) * 100.0);
+			result += CFormat(" (%.2f%%)") % ((double(m_value) / dynamic_cast<CStatTreeItemCounterTmpl<_Tp>*>(m_parent)->m_value) * 100.0);
 		}
 		return label % result;
 	}
@@ -337,11 +337,22 @@ template void CStatTreeItemNativeCounter::AddECValues(CECTag *tag) const;
 
 /* CStatTreeItemUlDlCounter */
 
+// The display format is "<session> (<all-time-cumulative>)" where
+// the session value is m_value and the cumulative is what
+// m_totalfunc() returns. Both values are kept in sync by
+// CStatistics::AddSentBytes / AddReceivedBytes, which adds the same
+// byte count to both the session counter (m_value) and the saved
+// cumulative (m_totalfunc()'s underlying s_totalSent / s_totalReceived).
+// So m_totalfunc() already includes m_value -- adding m_value again
+// double-counts the session bytes in the cumulative slot, which is
+// the user-visible #301: live UI shows "session bytes counted twice"
+// and the post-restart figure drops by exactly one session-worth.
+// Use m_totalfunc() directly for the cumulative slot.
 #ifndef AMULE_DAEMON
 wxString CStatTreeItemUlDlCounter::GetDisplayString() const
 {
 	return CFormat(wxGetTranslation(m_label)) %
-		a_brackets_b(CastItoXBytes(m_value), CastItoXBytes(m_value + m_totalfunc()));
+		a_brackets_b(CastItoXBytes(m_value), CastItoXBytes(m_totalfunc()));
 }
 #endif
 
@@ -349,7 +360,7 @@ void CStatTreeItemUlDlCounter::AddECValues(CECTag *tag) const
 {
 	CECTag value(EC_TAG_STAT_NODE_VALUE, m_value);
 	value.AddTag(CECTag(EC_TAG_STAT_VALUE_TYPE, (uint8)EC_VALUE_BYTES));
-	CECTag tmp(EC_TAG_STAT_NODE_VALUE, m_value + m_totalfunc());
+	CECTag tmp(EC_TAG_STAT_NODE_VALUE, m_totalfunc());
 	tmp.AddTag(CECTag(EC_TAG_STAT_VALUE_TYPE, (uint8)EC_VALUE_BYTES));
 	value.AddTag(tmp);
 	tag->AddTag(value);
@@ -463,10 +474,10 @@ wxString CStatTreeItemAverage::GetDisplayString() const
 					CastSecondsToHM((*m_dividend)/(*m_divisor));
 			default:
 				return CFormat(wxGetTranslation(m_label)) %
-					(CFormat(wxT("%u")) % ((uint64)(*m_dividend)/(*m_divisor))).GetString();
+					(CFormat("%u") % ((uint64)(*m_dividend)/(*m_divisor))).GetString();
 		}
 	} else {
-		return CFormat(wxGetTranslation(m_label)) % wxT("-");
+		return CFormat(wxGetTranslation(m_label)) % "-";
 	}
 }
 #endif
@@ -487,7 +498,7 @@ void CStatTreeItemAverage::AddECValues(CECTag *tag) const
 			tag->AddTag(value);
 		}
 	} else {
-		CECTag value(EC_TAG_STAT_NODE_VALUE, wxString(wxT("-")));
+		CECTag value(EC_TAG_STAT_NODE_VALUE, wxString("-"));
 		value.AddTag(CECTag(EC_TAG_STAT_VALUE_TYPE, (uint8)EC_VALUE_STRING));
 		tag->AddTag(value);
 	}
@@ -532,9 +543,9 @@ wxString CStatTreeItemRatio::GetString() const
 	double v2 = m_counter2->GetValue();
 	if (v1 > 0 && v2 > 0) {
 		if (v2 < v1) {
-			ret = CFormat(wxT("%.2f : 1")) % (v1 / v2);
+			ret = CFormat("%.2f : 1") % (v1 / v2);
 		} else {
-			ret = CFormat(wxT("1 : %.2f")) % (v2 / v1);
+			ret = CFormat("1 : %.2f") % (v2 / v1);
 		}
 	} else {
 		ret = _("Not available");
@@ -544,10 +555,15 @@ wxString CStatTreeItemRatio::GetString() const
 	if (m_totalfunc1 && m_totalfunc2) {
 		double t1 = m_totalfunc1() + v1;
 		double t2 = m_totalfunc2() + v2;
-		if (t2 < t1) {
-			ret += CFormat(wxT(" (%.2f : 1)")) % (t1 / t2);
-		} else {
-			ret += CFormat(wxT(" (1 : %.2f)")) % (t2 / t1);
+		// Guard against fresh-install / zero-history cases. Without
+		// this, t1/t2 or t2/t1 divides by zero and the UI surfaces
+		// "(1 : nan)" or "(1 : inf)".
+		if (t1 > 0 && t2 > 0) {
+			if (t2 < t1) {
+				ret += CFormat(" (%.2f : 1)") % (t1 / t2);
+			} else {
+				ret += CFormat(" (1 : %.2f)") % (t2 / t1);
+			}
 		}
 	}
 	
@@ -591,7 +607,7 @@ wxString CStatTreeItemMaxConnLimitReached::GetDisplayString() const
 {
 	if (m_count) {
 		return CFormat(wxGetTranslation(m_label)) %
-			(CFormat(wxT("%i : %s %s")) % m_count % m_time.FormatISODate() % m_time.FormatISOTime());
+			(CFormat("%i : %s %s") % m_count % m_time.FormatISODate() % m_time.FormatISOTime());
 	} else {
 		return CFormat(wxGetTranslation(m_label)) % _("Never");
 	}
@@ -602,7 +618,7 @@ void CStatTreeItemMaxConnLimitReached::AddECValues(CECTag *tag) const
 {
 	wxString result;
 	if (m_count) {
-		result = CFormat(wxT("%i : %s %s")) % m_count % m_time.FormatISODate() % m_time.FormatISOTime();
+		result = CFormat("%i : %s %s") % m_count % m_time.FormatISODate() % m_time.FormatISOTime();
 	} else {
 		result = wxTRANSLATE("Never");
 	}

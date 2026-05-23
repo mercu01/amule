@@ -25,6 +25,8 @@
 
 #include "PartFileConvertDlg.h"
 
+#include <vector>
+
 #include <common/Format.h>
 #include <common/Path.h>
 #include "DataToText.h"
@@ -35,7 +37,7 @@
 #include <wx/stdpaths.h>
 #include "muuli_wdr.h"
 
-CPartFileConvertDlg*	CPartFileConvertDlg::s_convertgui = NULL;
+CPartFileConvertDlg*	CPartFileConvertDlg::s_convert_gui = NULL;
 
 
 #ifndef __WINDOWS__
@@ -72,13 +74,13 @@ static const char * convert_xpm[] = {
 // Modeless Dialog Implementation
 // CPartFileConvertDlg dialog
 
-BEGIN_EVENT_TABLE(CPartFileConvertDlg, wxDialog)
+wxBEGIN_EVENT_TABLE(CPartFileConvertDlg, wxDialog)
 	EVT_BUTTON(IDC_ADDITEM,		CPartFileConvertDlg::OnAddFolder)
 	EVT_BUTTON(IDC_RETRY,		CPartFileConvertDlg::RetrySel)
 	EVT_BUTTON(IDC_CONVREMOVE,	CPartFileConvertDlg::RemoveSel)
 	EVT_BUTTON(wxID_CANCEL,		CPartFileConvertDlg::OnCloseButton)
 	EVT_CLOSE(CPartFileConvertDlg::OnClose)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 CPartFileConvertDlg::CPartFileConvertDlg(wxWindow* parent)
 	: wxDialog(parent, -1, _("Import partfiles"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
@@ -108,35 +110,35 @@ CPartFileConvertDlg::CPartFileConvertDlg(wxWindow* parent)
 
 void CPartFileConvertDlg::ShowGUI(wxWindow* parent)
 {
-	if (s_convertgui) {
-		s_convertgui->Show(true);
-		s_convertgui->Raise();
+	if (s_convert_gui) {
+		s_convert_gui->Show(true);
+		s_convert_gui->Raise();
 	} else {
-		s_convertgui = new CPartFileConvertDlg(parent);
-		s_convertgui->Show(true);
+		s_convert_gui = new CPartFileConvertDlg(parent);
+		s_convert_gui->Show(true);
 		Notify_ConvertReaddAllJobs();
 	}
 }
 
 void CPartFileConvertDlg::CloseGUI()
 {
-	if (s_convertgui) {
-		s_convertgui->Show(false);
-		s_convertgui->Destroy();
-		s_convertgui = NULL;
+	if (s_convert_gui) {
+		s_convert_gui->Show(false);
+		s_convert_gui->Destroy();
+		s_convert_gui = NULL;
 	}
 }
 
 void CPartFileConvertDlg::UpdateProgress(float percent, wxString text, wxString header)
 {
-	if (s_convertgui) {
-		s_convertgui->m_pb_current->SetValue((int)percent);
-		wxString buffer = CFormat(wxT("%.2f %%")) % percent;
-		wxStaticText* percentlabel = dynamic_cast<wxStaticText*>(s_convertgui->FindWindow(IDC_CONV_PROZENT));
+	if (s_convert_gui) {
+		s_convert_gui->m_pb_current->SetValue((int)percent);
+		wxString buffer = CFormat("%.2f %%") % percent;
+		wxStaticText* percentlabel = dynamic_cast<wxStaticText*>(s_convert_gui->FindWindow(IDC_CONV_PROZENT));
 		percentlabel->SetLabel(buffer);
 
 		if (!text.IsEmpty()) {
-			dynamic_cast<wxStaticText*>(s_convertgui->FindWindow(IDC_CONV_PB_LABEL))->SetLabel(text);
+			dynamic_cast<wxStaticText*>(s_convert_gui->FindWindow(IDC_CONV_PB_LABEL))->SetLabel(text);
 		}
 
 		percentlabel->GetParent()->Layout();
@@ -149,46 +151,46 @@ void CPartFileConvertDlg::UpdateProgress(float percent, wxString text, wxString 
 
 void CPartFileConvertDlg::ClearInfo()
 {
-	if (s_convertgui) {
+	if (s_convert_gui) {
 		dynamic_cast<wxStaticBoxSizer*>(IDC_CURJOB)->GetStaticBox()->SetLabel(_("Waiting..."));
-		dynamic_cast<wxStaticText*>(s_convertgui->FindWindow(IDC_CONV_PROZENT))->SetLabel(wxEmptyString);
-		s_convertgui->m_pb_current->SetValue(0);
-		dynamic_cast<wxStaticText*>(s_convertgui->FindWindow(IDC_CONV_PB_LABEL))->SetLabel(wxEmptyString);
+		dynamic_cast<wxStaticText*>(s_convert_gui->FindWindow(IDC_CONV_PROZENT))->SetLabel("");
+		s_convert_gui->m_pb_current->SetValue(0);
+		dynamic_cast<wxStaticText*>(s_convert_gui->FindWindow(IDC_CONV_PB_LABEL))->SetLabel("");
 	}
 }
 
 void CPartFileConvertDlg::UpdateJobInfo(ConvertInfo& info)
 {
-	if (s_convertgui) {
+	if (s_convert_gui) {
 		// search jobitem in listctrl
-		long itemnr = s_convertgui->m_joblist->FindItem(-1, info.id);
+		long item_nr = s_convert_gui->m_joblist->FindItem(-1, info.id);
 		// if it does not exist, add it
-		if (itemnr == -1) {
-			itemnr = s_convertgui->m_joblist->InsertItem(s_convertgui->m_joblist->GetItemCount(), info.folder.GetPrintable());
-			if (itemnr != -1) {
-				s_convertgui->m_joblist->SetItemData(itemnr, info.id);
+		if (item_nr == -1) {
+			item_nr = s_convert_gui->m_joblist->InsertItem(s_convert_gui->m_joblist->GetItemCount(), info.folder.GetPrintable());
+			if (item_nr != -1) {
+				s_convert_gui->m_joblist->SetItemData(item_nr, info.id);
 			}
 		}
 		// update columns
-		if (itemnr != -1) {
-			s_convertgui->m_joblist->SetItem(itemnr, 0, info.filename.IsOk() ? info.folder.GetPrintable() : info.filename.GetPrintable() );
-			s_convertgui->m_joblist->SetItem(itemnr, 1, GetConversionState(info.state) );
+		if (item_nr != -1) {
+			s_convert_gui->m_joblist->SetItem(item_nr, 0, info.filename.IsOk() ? info.folder.GetPrintable() : info.filename.GetPrintable() );
+			s_convert_gui->m_joblist->SetItem(item_nr, 1, GetConversionState(info.state) );
 			if (info.size > 0) {
-				s_convertgui->m_joblist->SetItem(itemnr, 2, CFormat(_("%s (Disk: %s)")) % CastItoXBytes(info.size) % CastItoXBytes(info.spaceneeded));
+				s_convert_gui->m_joblist->SetItem(item_nr, 2, CFormat(_("%s (Disk: %s)")) % CastItoXBytes(info.size) % CastItoXBytes(info.spaceneeded));
 			} else {
-				s_convertgui->m_joblist->SetItem(itemnr, 2, wxEmptyString);
+				s_convert_gui->m_joblist->SetItem(item_nr, 2, "");
 			}
-			s_convertgui->m_joblist->SetItem(itemnr, 3, info.filehash);
+			s_convert_gui->m_joblist->SetItem(item_nr, 3, info.filehash);
 		}
 	}
 }
 
 void CPartFileConvertDlg::RemoveJobInfo(unsigned id)
 {
-	if (s_convertgui) {
-		long itemnr = s_convertgui->m_joblist->FindItem(-1, id);
-		if (itemnr != -1) {
-			s_convertgui->m_joblist->DeleteItem(itemnr);
+	if (s_convert_gui) {
+		long item_nr = s_convert_gui->m_joblist->FindItem(-1, id);
+		if (item_nr != -1) {
+			s_convert_gui->m_joblist->DeleteItem(item_nr);
 		}
 	}
 }
@@ -227,10 +229,23 @@ void CPartFileConvertDlg::RemoveSel(wxCommandEvent& WXUNUSED(event))
 {
 	if (m_joblist->GetSelectedItemCount() == 0) return;
 
-	long itemnr = m_joblist->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
-	while (itemnr != -1) {
-		Notify_ConvertRemoveJob(m_joblist->GetItemData(itemnr));
-		itemnr = m_joblist->GetNextItem(itemnr, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+	// Collect every selected job id before issuing any removal. The
+	// notification is delivered synchronously on the main thread, so
+	// each Notify_ConvertRemoveJob() reaches CPartFileConvertDlg::
+	// RemoveJobInfo() and DeleteItem()s the row before this function
+	// returns -- which invalidates the next GetNextItem() walk when
+	// the last surviving selected row was the last row overall
+	// (wxGenericListCtrl::GetNextItem asserts "ret < max" because
+	// item_nr is now past the shrunken end).
+	std::vector<wxUIntPtr> ids;
+	ids.reserve(m_joblist->GetSelectedItemCount());
+	for (long item_nr = m_joblist->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+	     item_nr != -1;
+	     item_nr = m_joblist->GetNextItem(item_nr, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) {
+		ids.push_back(m_joblist->GetItemData(item_nr));
+	}
+	for (wxUIntPtr id : ids) {
+		Notify_ConvertRemoveJob(id);
 	}
 }
 
@@ -238,9 +253,9 @@ void CPartFileConvertDlg::RetrySel(wxCommandEvent& WXUNUSED(event))
 {
 	if (m_joblist->GetSelectedItemCount() == 0) return;
 
-	long itemnr = m_joblist->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
-	while (itemnr != -1) {
-		Notify_ConvertRetryJob(m_joblist->GetItemData(itemnr));
-		itemnr = m_joblist->GetNextItem(itemnr, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+	long item_nr = m_joblist->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+	while (item_nr != -1) {
+		Notify_ConvertRetryJob(m_joblist->GetItemData(item_nr));
+		item_nr = m_joblist->GetNextItem(item_nr, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
 	}
 }

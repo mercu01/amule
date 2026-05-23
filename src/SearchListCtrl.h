@@ -64,7 +64,7 @@ public:
                 const wxSize &size = wxDefaultSize,
                 long style = wxLC_ICON,
                 const wxValidator& validator = wxDefaultValidator,
-                const wxString &name = wxT("mulelistctrl") );
+                const wxString &name = "mulelistctrl" );
 
 	/**
 	 * Destructor.
@@ -100,7 +100,7 @@ public:
 	 *
 	 * @param nResult The ID of the results or Zero to simply reset the list.
 	 */
-	void	ShowResults( long ResultsId );
+	void	ShowResults( wxUIntPtr ResultsId );
 
 	/**
 	 * Updates the colors of item at the specified index.
@@ -199,7 +199,7 @@ protected:
 	 * @see CMuleListCtrl::SetSortFunc
 	 * @see wxListCtrl::SortItems
 	 */
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, wxIntPtr sortData);
 
 	/** @see CMuleListCtrl::AltSortAllowed */
 	virtual bool AltSortAllowed(unsigned column) const;
@@ -297,7 +297,7 @@ protected:
 	 */
 	void OnPopupDownload( wxCommandEvent& event );
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 #endif // SEARCHLISTCTRL_H

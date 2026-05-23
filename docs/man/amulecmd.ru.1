@@ -72,7 +72,7 @@ amulecmd и выйти.
 Выводит короткую помощь по использованию.
 .SH КОМАНДЫ
 Все команды чувствительны к регистру.
-.SS "Add \fI<eD2k\-ссылка>\fP | \fI<magnet\-ссылка>\fP"
+.SS_untranslated Add \fI<eD2k-link>\fP | \fI<magnet-link>\fP
 Добавляет eD2k\-ссылку или magnet\-ссылку в ядро.
 
 Добавляемая eD2k\-ссылка может быть:
@@ -88,11 +88,11 @@ amulecmd и выйти.
 .RE
 
 Magnet\-ссылка должна содержать eD2k\-хэш и размер файла.
-.SS "Cancel \fI<хэш>\fP | \fI<номер>\fP"
+.SS_untranslated Cancel \fI<hash>\fP | \fI<number>\fP
 Отменяет закачку указанную по \fI<хэшу>\fP или
 \fI<номеру>\fP. Чтобы определить значения, воспользуйтесь командой
 \fBshow\fP.
-.SS "Connect [ \fIkad\fP | \fIed2k\fP | \fI<ip|имя>\fP ]"
+.SS_untranslated Connect [ \fIkad\fP | \fIed2k\fP | \fI<ip|name>\fP ]
 Подключиться к сети.
 
 Это подсоединит ко всем сетям, включенным в настройках.
@@ -103,7 +103,7 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 подключится только к этому серверу.
 .SS_untranslated Disconnect [ \fIed2k\fP | \fIkad\fP ]
 Отсоединяет от всех сетей, или только от указанной сети.
-.SS "Download \fI<номер>\fP"
+.SS_untranslated Download \fI<number>\fP
 Начать закачку файла.
 
 Должен быть указан \fI<номер>\fP файла в последнем поиске.  Пример:
@@ -111,7 +111,7 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 последнем поиске.
 .SS_untranslated Exit
 Отключится от amule/amuled и выйти из amulecmd.
-.SS "Get \fI<параметр>\fP"
+.SS_untranslated Get \fI<what>\fP
 Вывести параметр настроек.
 
 Возможные значения поля \fI<параметр>\fP:
@@ -121,15 +121,15 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 .IP IPFilter 10
 Вывести настройки IPFilter.
 .RE
-.SS "Help [ \fI<команда>\fP ]"
+.SS_untranslated Help [ \fI<command>\fP ]
 Вывести короткую справку. Если вызвана без параметров, выводит список
 возможных команд. Если вызвана с параметром \fI<команда>\fP, показывает
 справку по данной команде.
-.SS "Pause \fI<хэш>\fP | \fI<номер>\fP"
+.SS_untranslated Pause \fI<hash>\fP | \fI<number>\fP
 Ставит на паузу закачку указанную по \fI<хэшу>\fP или
 \fI<номеру>\fP. Чтобы определить значения, воспользуйтесь командой
 \fBshow\fP.
-.SS "Priority \fI<приоритет>\fP \fI<хэш>\fP | \fI<номер>\fP"
+.SS_untranslated Priority \fI<priority>\fP \fI<hash>\fP | \fI<number>\fP
 Указывает приоритет закачки указанной по \fI<хэшу>\fP или
 \fI<номеру>\fP.
 
@@ -147,8 +147,8 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 .SS_untranslated Progress
 Показывает состояние работающего поиска.
 .SS_untranslated Quit
-То же что и \fBexit\fP.
-.SS "Reload \fI<объект>\fP"
+A synonym of the \fBexit\fP command.
+.SS_untranslated Reload \fI<what>\fP
 Обновляет указанный объект.
 
 Возможные значения поля \fI<параметр>\fP:
@@ -162,11 +162,11 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 Обнуляет лог.
 .SS_untranslated Results
 Выводит результат последнего поиска.
-.SS "Resume \fI<хэш>\fP | \fI<номер>\fP"
+.SS_untranslated Resume \fI<hash>\fP | \fI<number>\fP
 Возобновляет закачку указанную по \fI<хэшу>\fP или
 \fI<номеру>\fP. Чтобы определить значения, воспользуйтесь командой
 \fBshow\fP.
-.SS "Search \fI<тип>\fP \fI<слово>\fP"
+.SS_untranslated Search \fI<type>\fP [\fI<filters>\fP] \fI<keyword>\fR
 Производит поиск по указанному \fI<слову>\fP. Указание типа и слова
 обязательны. Пример: `search kad amule' производит поиск по kad по слову
 `amule'.
@@ -180,7 +180,26 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 .IP Local 10
 Локальный поиск.
 .RE
-.SS "Set \fI<параметр>\fP"
+.PP
+Optional filters can be placed before, after, or interleaved with the search
+keyword(s):
+.RS
+.IP "\fB\-\-type\fR \fI<Audio|Video|Image|Doc|Pro|Arc|Iso>\fR" 4
+Restrict results to the given file type.
+.IP "\fB\-\-extension\fR \fI<ext>\fR (alias: \fB\-\-ext\fR)" 4
+Restrict results to a specific file extension (e.g.\ \fIiso\fP, \fImp3\fP).
+.IP "\fB\-\-avail\fR \fI<N>\fR (alias: \fB\-\-availability\fR)" 4
+Minimum number of sources a result must report.
+.IP "\fB\-\-min\-size\fR \fI<N[KMG]>\fR" 4
+Smallest file size to return. Suffixes use binary multipliers (K = 1024, M =
+K\(mu1024, G = M\(mu1024); no suffix means bytes.
+.IP "\fB\-\-max\-size\fR \fI<N[KMG]>\fR" 4
+Largest file size to return. Same suffixes as \fB\-\-min\-size\fP.
+.RE
+.PP
+Example: `search global linux iso \-\-type Iso \-\-min\-size 100M' returns
+results for \(lqlinux iso\(rq of file\-type Iso at least 100 MiB.
+.SS_untranslated Set \fI<what>\fR
 Задает указанный параметр.
 
 Возможные значения поля \fI<параметр>\fP:
@@ -190,7 +209,7 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 .IP IPFilter 10
 Задает параметры IPFilter.
 .RE
-.SS "Show \fI<элемент>\fP"
+.SS_untranslated Show \fI<what>\fR
 Выводит очередь закачки/отдачи, список серверов или опубликованные файлы.
 
 Возможные значения поля \fI<параметр>\fP:
@@ -201,13 +220,15 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 Выводит лог.
 .IP Servers 10
 Выводит список серверов.
+.IP Shared 10
+Show shared files list.
 .IP UL 10
 Выводит список отдачи.
 .RE
 .SS_untranslated Shutdown
 Завершает работу ядра (amule/amuled). Так же завершает работу amulecmd,
 т.к. он бесполезен без работающего ядра.
-.SS "Statistics [ \fI<число>\fP ]"
+.SS_untranslated Statistics [ \fI<number>\fP ]
 Выводит дерево статистики.
 
 Параметр \fI<число>\fP может быть в промежутке 0\-255, и будет
@@ -270,9 +291,10 @@ Magnet\-ссылка должна содержать eD2k\-хэш и разме�
 Конечно, вы не обязаны следовать этим рекомендациям.
 .SH "СООБЩЕНИЕ ОБ ОШИБКАХ"
 Пожалуйста, сообщайте об ошибках либо на нашем форуме
-(\fIhttp://forum.amule.org/\fP), либо в багтрекере
-(\fIhttp://bugs.amule.org/\fP). Пожалуйста, не сообщайте об ошбках по
-электронной почте, по нашим спискам рассылки, или напрямую участникам.
+(\fIhttps://github.com/amule\-org/amule/discussions\fP), либо в багтрекере
+(\fIhttps://github.com/amule\-org/amule/issues\fP). Пожалуйста, не сообщайте об
+ошбках по электронной почте, по нашим спискам рассылки, или напрямую
+участникам.
 .SH "АВТОРСКИЕ ПРАВА"
 aMule и все прилагающиеся инструменты распространаются под Открытым
 Лицензионным Соглашением GNU (GNU GPL).

@@ -189,6 +189,18 @@ public:
 	void SetEnabled( DebugType type, bool enabled );
 
 	/**
+	 * Sets the global verbose-debug flag that gates IsEnabled() per category.
+	 *
+	 * The amuled / monolithic build stores this in thePrefs; the
+	 * console-binary build (amuleweb, amulecmd, etc.) maintains its own
+	 * static since it doesn't link CPreferences. ExternalConnector calls
+	 * this with the value of /eMule/VerboseDebug after loading amule.conf
+	 * and again after parsing the --verbose CLI flag so both paths drive
+	 * the same gate.
+	 */
+	void SetVerbose(bool verbose);
+
+	/**
 	 * Returns true if logging to stdout is enabled
 	 */
 	bool IsEnabledStdoutLog() const		{ return m_StdoutLog; }
@@ -306,7 +318,7 @@ private:
 	 */
 	void DoLines(const wxString & lines, bool critical, bool toStdout, bool toGUI);
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 extern CLogger theLogger;
@@ -326,8 +338,7 @@ public:
 };
 
 
-DECLARE_LOCAL_EVENT_TYPE(MULE_EVT_LOGLINE, -1)
-
+wxDECLARE_EVENT(MULE_EVT_LOGLINE, wxEvent);
 
 /** This event is sent when a log-line is queued. */
 class CLoggingEvent : public wxEvent
@@ -373,11 +384,9 @@ private:
 
 typedef void (wxEvtHandler::*MuleLogEventFunction)(CLoggingEvent&);
 
-//! Event-handler for completed hashings of new shared files and partfiles.
+//! Event-handler for log-line events dispatched to GUI / stdout sinks.
 #define EVT_MULE_LOGGING(func) \
-	DECLARE_EVENT_TABLE_ENTRY(MULE_EVT_LOGLINE, -1, -1, \
-	(wxObjectEventFunction) (wxEventFunction) \
-	wxStaticCastEvent(MuleLogEventFunction, &func), (wxObject*) NULL),
+	wx__DECLARE_EVT0(MULE_EVT_LOGLINE, wxEVENT_HANDLER_CAST(MuleLogEventFunction, func))
 
 
 // access the logfile for EC

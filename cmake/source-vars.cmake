@@ -15,6 +15,7 @@ if (BUILD_MONOLITHIC OR BUILD_DAEMON)
 		ClientTCPSocket.cpp
 		ClientUDPSocket.cpp
 		CorruptionBlackBox.cpp
+		DownloadBandwidthThrottler.cpp
 		DownloadClient.cpp
 		DownloadQueue.cpp
 		ECSpecialCoreTags.cpp
@@ -34,18 +35,31 @@ if (BUILD_MONOLITHIC OR BUILD_DAEMON)
 		ServerSocket.cpp
 		ServerUDPSocket.cpp
 		SHAHashSet.cpp
+		SharedDirWatcher.cpp
 		SharedFileList.cpp
 		UploadBandwidthThrottler.cpp
 		UploadClient.cpp
+		UploadDiskIOThread.cpp
 		UploadQueue.cpp
+		PartFileWriteThread.cpp
+		PartFileHashThread.cpp
 		ThreadTasks.cpp
 	)
 endif()
 
 if (BUILD_MONOLITHIC OR BUILD_REMOTEGUI)
 	set (GUI_SOURCES
+		# wxArtProvider subclass + the C TU it pulls icon bytes
+		# from. ${AMULE_ICON_DATA_C} resolves to either the build-
+		# generated copy (Python3 found at configure → regenerated
+		# from src/icons/*.png by src/icons/embed_icons.py) or the
+		# checked-in fallback (Python3 missing → use the file as
+		# committed). See src/CMakeLists.txt for the resolution.
+		CamuleArtProvider.cpp
+		${AMULE_ICON_DATA_C}
 		AddFriend.cpp
 		amule-gui.cpp
+		AppImageIntegration.cpp
 		amuleDlg.cpp
 		CatDialog.cpp
 		ChatSelector.cpp
@@ -66,6 +80,7 @@ if (BUILD_MONOLITHIC OR BUILD_REMOTEGUI)
 		SearchListCtrl.cpp
 		ServerListCtrl.cpp
 		ServerWnd.cpp
+		SharedDirsApplyTask.cpp
 		SharedFilePeersListCtrl.cpp
 		SharedFilesCtrl.cpp
 		SharedFilesWnd.cpp
@@ -73,6 +88,13 @@ if (BUILD_MONOLITHIC OR BUILD_REMOTEGUI)
 		StatisticsDlg.cpp
 		TransferWnd.cpp
 	)
+
+	if (APPLE)
+		# Obj-C++ helper for AppKit access (NSApp activation policy
+		# toggle for "minimize to tray" — drops the Dock icon while
+		# the main window is hidden so no Dock thumbnail is left).
+		list (APPEND GUI_SOURCES MacAppHelper.mm)
+	endif()
 endif()
 
 if (BUILD_MONOLITHIC OR BUILD_DAEMON OR BUILD_REMOTEGUI)
@@ -96,7 +118,10 @@ if (BUILD_MONOLITHIC OR BUILD_DAEMON OR BUILD_REMOTEGUI)
 endif()
 
 if (ENABLE_IP2COUNTRY)
-	set (IP2COUNTRY IP2Country.cpp)
+	set (IP2COUNTRY
+		IP2Country.cpp
+		geoip/MaxMindDBDatabase.cpp
+	)
 endif()
 
 if (ENABLE_UPNP)

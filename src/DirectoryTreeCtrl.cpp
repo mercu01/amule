@@ -36,11 +36,11 @@
 #include "muuli_wdr.h"		// Needed for amuleSpecial
 
 
-BEGIN_EVENT_TABLE(CDirectoryTreeCtrl, wxTreeCtrl)
+wxBEGIN_EVENT_TABLE(CDirectoryTreeCtrl, wxTreeCtrl)
 	EVT_TREE_ITEM_RIGHT_CLICK(wxID_ANY,	CDirectoryTreeCtrl::OnRButtonDown)
 	EVT_TREE_ITEM_ACTIVATED(wxID_ANY,	CDirectoryTreeCtrl::OnItemActivated)
 	EVT_TREE_ITEM_EXPANDED(wxID_ANY,	CDirectoryTreeCtrl::OnItemExpanding)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 
 class CItemData : public wxTreeItemData
@@ -60,7 +60,7 @@ class CItemData : public wxTreeItemData
 
 
 CDirectoryTreeCtrl::CDirectoryTreeCtrl(wxWindow* parent, int id, const wxPoint& pos, wxSize siz, int flags)
-	: wxTreeCtrl(parent,id,pos,siz,flags,wxDefaultValidator,wxT("ShareTree"))
+	: wxTreeCtrl(parent,id,pos,siz,flags,wxDefaultValidator,"ShareTree")
 {
 	m_IsInit = false;
 	HasChanged = false;
@@ -69,6 +69,32 @@ CDirectoryTreeCtrl::CDirectoryTreeCtrl(wxWindow* parent, int id, const wxPoint& 
 #else
 	m_IsRemote = false;
 #endif
+}
+
+
+wxFont CDirectoryTreeCtrl::GetRecursiveFont()
+{
+	// Cache: GetFont() can be a non-trivial wx call on some backends,
+	// and AddChildItem hits this once per tree item during the lazy
+	// expand pass.
+	if (!m_fontRecursiveRoot.IsOk()) {
+		m_fontRecursiveRoot = GetFont().MakeBold().MakeItalic();
+	}
+	return m_fontRecursiveRoot;
+}
+
+
+void CDirectoryTreeCtrl::ApplyRecursiveMark(wxTreeItemId hItem, bool isRecursive)
+{
+	if (isRecursive) {
+		SetItemFont(hItem, GetRecursiveFont());
+	} else {
+		// Revert to the tree's default font. SetItemBold is the
+		// orthogonal axis (plain bold for explicit / inside-recursive
+		// shares); clearing the custom font here doesn't drop that
+		// attribute -- IsBold-based logic continues to work.
+		SetItemFont(hItem, wxNullFont);
+	}
 }
 
 
@@ -100,12 +126,12 @@ void CDirectoryTreeCtrl::Init()
 
 	// Create an empty root item, which we can
 	// safely append when creating a full path.
-	m_root = AddRoot(wxEmptyString, IMAGE_FOLDER, -1,
+	m_root = AddRoot("", IMAGE_FOLDER, -1,
 					new CItemData(CPath()));
 
 	if (!m_IsRemote) {
 	#ifndef __WINDOWS__
-		AddChildItem(m_root, CPath(wxT("/")));
+		AddChildItem(m_root, CPath("/"));
 	#else
 		// this might take awhile, so change the cursor
 		::wxSetCursor(*wxHOURGLASS_CURSOR);
@@ -117,8 +143,8 @@ void CDirectoryTreeCtrl::Init()
 			if (! (drives & 1)) { // skip non existent drives
 				continue;
 			}
-			wxString driveStr = CFormat(wxT("%c:")) % drive;
-			uint32 type = GetDriveType((driveStr + wxT("\\")).wc_str());
+			wxString driveStr = CFormat("%c:") % drive;
+			uint32 type = GetDriveType((driveStr + "\\").wc_str());
 
 			// skip removable/undefined drives, share only fixed or remote drives
 			if ((type == 3 || type == 4)   // fixed drive / remote drive
@@ -150,10 +176,28 @@ void CDirectoryTreeCtrl::OnItemExpanding(wxTreeEvent& evt)
 
 void CDirectoryTreeCtrl::OnItemActivated(wxTreeEvent& evt)
 {
-	if (!m_IsRemote) {
-		CheckChanged(evt.GetItem(), !IsBold(evt.GetItem()), false);
-		HasChanged = true;
+	if (m_IsRemote) {
+		return;
 	}
+	const wxTreeItemId hItem = evt.GetItem();
+	// A descendant of a recursive-share root cannot be individually
+	// un-shared via this UI: the apply task will re-flatten the root's
+	// subtree at commit time, so a left-click here would just un-bold
+	// the item visually and have the entry reappear after Apply. Block
+	// the action with a message so the user understands what to do
+	// (drop the recursive marker on the root, or right-click an
+	// ancestor) rather than silently appearing to ignore their click.
+	if (IsInsideRecursiveShare(GetFullPath(hItem))) {
+		wxMessageBox(
+			_("This directory is part of a recursive share. "
+			  "To remove it, un-share or modify the recursive "
+			  "share root above it."),
+			_("Cannot unshare inside a recursive share"),
+			wxOK | wxICON_INFORMATION, this);
+		return;
+	}
+	CheckChanged(hItem, !IsBold(hItem), false);
+	HasChanged = true;
 }
 
 
@@ -161,32 +205,92 @@ void CDirectoryTreeCtrl::OnRButtonDown(wxTreeEvent& evt)
 {
 	if (m_IsRemote) {
 		SelectItem(evt.GetItem()); // looks weird otherwise
-	} else {
-		// this might take awhile, so change the cursor
-		::wxSetCursor(*wxHOURGLASS_CURSOR);
-		MarkChildren(evt.GetItem(), !IsBold(evt.GetItem()), false);
-		::wxSetCursor(*wxSTANDARD_CURSOR);
-		HasChanged = true;
+		return;
 	}
+
+	// Right-click is the "recursive share" gesture. Historically the
+	// handler eagerly walked the entire subtree (expanding every
+	// directory it had never opened, then marking each one as
+	// shared) which on large roots like /home produced multi-minute
+	// UI freezes with no progress indicator and no way to cancel —
+	// see issue #592.
+	//
+	// We now record the intent on the right-clicked item only.
+	// PrefsUnifiedDlg::OnOk flattens the recursive-share roots into
+	// concrete subdirectory paths on a background thread with a
+	// progress dialog and a cancel button. Already-expanded
+	// descendants are still toggled visually here so the tree
+	// reflects what the user sees, but no new directory enumeration
+	// is performed; collapsed subtrees retain their current visual
+	// state and will be correctly bolded the next time they are
+	// expanded (AddChildItem checks IsInsideRecursiveShare).
+	const wxTreeItemId hItem = evt.GetItem();
+	const bool wasBold = IsBold(hItem);
+	const CPath fullPath = GetFullPath(hItem);
+
+	// A descendant of an existing recursive root is already covered
+	// by that root's expansion. Right-clicking it to add or remove
+	// its own recursive marker is meaningless -- either redundant
+	// (the descendant's subtree is already shared via the ancestor)
+	// or impotent (DelRecursiveShare on a non-root is a no-op).
+	// Block both with the same explanatory message.
+	if (IsInsideRecursiveShare(fullPath)) {
+		wxMessageBox(
+			_("This directory is part of a recursive share. "
+			  "To remove it, un-share or modify the recursive "
+			  "share root above it."),
+			_("Cannot modify inside a recursive share"),
+			wxOK | wxICON_INFORMATION, this);
+		return;
+	}
+
+	if (wasBold) {
+		// Unshare. Clean both the recursive intent and any
+		// m_lstShared entries that live underneath this path —
+		// the latter is what removes the flat descendants that a
+		// previous Prefs session may have committed from a
+		// recursive share. Doing it as an in-memory map sweep
+		// catches subdirs that aren't currently rendered in the
+		// tree without having to expand them all from disk.
+		DelRecursiveShare(fullPath);
+		DelSharesUnder(fullPath);
+		// Drop the bold-italic font marker too; the underlying
+		// recursive intent is gone.
+		ApplyRecursiveMark(hItem, false);
+	} else {
+		AddRecursiveShare(fullPath);
+		// Apply the bold-italic marker so the user can tell at
+		// a glance which item carries the recursive intent (vs
+		// the descendants which inherit it visually as plain bold).
+		ApplyRecursiveMark(hItem, true);
+	}
+
+	// Walk only the *already-loaded* descendants so the in-tree
+	// visual stays consistent without forcing any disk I/O.
+	MarkChildren(hItem, !wasBold, false);
+	HasChanged = true;
 }
 
 
 void CDirectoryTreeCtrl::MarkChildren(wxTreeItemId hChild, bool mark, bool recursed)
 {
-	// Ensure that children are added, otherwise we might only get a "." entry.
-	if (!IsExpanded(hChild) && ItemHasChildren(hChild)) {
-		DeleteChildren(hChild);
-		AddSubdirectories(hChild, GetFullPath(hChild));
-		SortChildren(hChild);
-	}
-
+	// Touch only the children that are *already* loaded into the
+	// tree control. We no longer enumerate collapsed subtrees here —
+	// that would re-introduce the unbounded directory walk OnRButton-
+	// Down used to do. Collapsed subtrees stay as-is and are
+	// re-evaluated on demand by AddChildItem (which consults the
+	// recursive-share intent) the next time the user expands them.
 	wxTreeItemIdValue cookie;
 	wxTreeItemId hChild2 = GetFirstChild(hChild, cookie);
 	if (hChild2.IsOk()) {
 		SetHasSharedSubdirectory(hChild, mark);
 	}
 	while (hChild2.IsOk()) {
-		MarkChildren(hChild2, mark, true);
+		if (IsExpanded(hChild) || ItemHasChildren(hChild2)) {
+			MarkChildren(hChild2, mark, true);
+		} else {
+			CheckChanged(hChild2, mark, true);
+		}
 
 		hChild2 = GetNextSibling(hChild2);
 	}
@@ -197,7 +301,7 @@ void CDirectoryTreeCtrl::MarkChildren(wxTreeItemId hChild, bool mark, bool recur
 
 void CDirectoryTreeCtrl::AddChildItem(wxTreeItemId hBranch, const CPath& item)
 {
-	wxCHECK_RET(hBranch.IsOk(), wxT("Attempted to add children to invalid item"));
+	wxCHECK_RET(hBranch.IsOk(), "Attempted to add children to invalid item");
 
 	CPath fullPath = GetFullPath(hBranch).JoinPaths(item);
 	wxTreeItemId treeItem = AppendItem(hBranch, item.GetPrintable(),
@@ -208,8 +312,25 @@ void CDirectoryTreeCtrl::AddChildItem(wxTreeItemId hBranch, const CPath& item)
 	// This causes asserts on Mac and possibly other systems, so we have to repeat setting the string here.
 	SetItemText(treeItem, item.GetPrintable());
 
-	if (IsShared(fullPath)) {
+	// Bold means "this directory is part of the pending share set",
+	// covering both the explicit-share case (m_lstShared) and the
+	// implicit case where the item is a descendant of a recursive-
+	// share root (m_lstSharedRecursive). The latter check is what
+	// keeps the tree visually consistent after a right-click whose
+	// recursive expansion is now deferred to commit time — the
+	// subtree gets bolded lazily as the user opens it.
+	const bool isRecursiveRoot = IsRecursiveShare(fullPath);
+	if (IsShared(fullPath) || isRecursiveRoot
+		|| IsInsideRecursiveShare(fullPath))
+	{
 		SetItemBold(treeItem, true);
+	}
+	// A recursive root gets bold-italic to distinguish it from
+	// plain explicit shares and from descendants covered by an
+	// inherited recursive expansion (which would otherwise all look
+	// identical in plain bold).
+	if (isRecursiveRoot) {
+		ApplyRecursiveMark(treeItem, true);
 	}
 
 	if (HasSharedSubdirectory(fullPath)) {
@@ -218,19 +339,19 @@ void CDirectoryTreeCtrl::AddChildItem(wxTreeItemId hBranch, const CPath& item)
 
 	if (HasSubdirectories(fullPath)) {
 		// Trick. will show + if it has subdirs
-		AppendItem(treeItem, wxT("."));
+		AppendItem(treeItem, ".");
 	}
 }
 
 
 CPath CDirectoryTreeCtrl::GetFullPath(wxTreeItemId hItem)
 {
-	{ wxCHECK_MSG(hItem.IsOk(), CPath(), wxT("Invalid item in GetFullPath")); }
+	{ wxCHECK_MSG(hItem.IsOk(), CPath(), "Invalid item in GetFullPath"); }
 
 	CPath result;
 	for (; hItem.IsOk(); hItem = GetItemParent(hItem)) {
 		CItemData* data = dynamic_cast<CItemData*>(GetItemData(hItem));
-		wxCHECK_MSG(data, CPath(), wxT("Missing data-item in GetFullPath"));
+		wxCHECK_MSG(data, CPath(), "Missing data-item in GetFullPath");
 
 		result = data->GetPathComponent().JoinPaths(result);
 	}
@@ -241,7 +362,7 @@ CPath CDirectoryTreeCtrl::GetFullPath(wxTreeItemId hItem)
 
 void CDirectoryTreeCtrl::AddSubdirectories(wxTreeItemId hBranch, const CPath& path)
 {
-	wxCHECK_RET(path.IsOk(), wxT("Invalid path in AddSubdirectories"));
+	wxCHECK_RET(path.IsOk(), "Invalid path in AddSubdirectories");
 
 	CDirIterator sharedDir(path);
 
@@ -265,7 +386,7 @@ bool CDirectoryTreeCtrl::HasSubdirectories(const CPath& folder)
 
 void CDirectoryTreeCtrl::GetSharedDirectories(PathList* list)
 {
-	wxCHECK_RET(list, wxT("Invalid list in GetSharedDirectories"));
+	wxCHECK_RET(list, "Invalid list in GetSharedDirectories");
 
 	for (SharedMap::iterator it = m_lstShared.begin(); it != m_lstShared.end(); ++it) {
 		list->push_back(it->second);
@@ -275,7 +396,7 @@ void CDirectoryTreeCtrl::GetSharedDirectories(PathList* list)
 
 void CDirectoryTreeCtrl::SetSharedDirectories(PathList* list)
 {
-	wxCHECK_RET(list, wxT("Invalid list in SetSharedDirectories"));
+	wxCHECK_RET(list, "Invalid list in SetSharedDirectories");
 
 	m_lstShared.clear();
 	for (PathList::iterator it = list->begin(); it != list->end(); ++it) {
@@ -288,16 +409,56 @@ void CDirectoryTreeCtrl::SetSharedDirectories(PathList* list)
 }
 
 
+void CDirectoryTreeCtrl::GetRecursiveSharedDirectories(PathList* list)
+{
+	wxCHECK_RET(list, "Invalid list in GetRecursiveSharedDirectories");
+
+	for (SharedMap::iterator it = m_lstSharedRecursive.begin();
+		it != m_lstSharedRecursive.end(); ++it)
+	{
+		list->push_back(it->second);
+	}
+}
+
+
+void CDirectoryTreeCtrl::SetRecursiveSharedDirectories(PathList* list)
+{
+	wxCHECK_RET(list, "Invalid list in SetRecursiveSharedDirectories");
+
+	m_lstSharedRecursive.clear();
+	for (PathList::iterator it = list->begin(); it != list->end(); ++it) {
+		m_lstSharedRecursive.insert(SharedMapItem(GetKey(*it), *it));
+	}
+
+	// Mirror SetSharedDirectories: refresh the tree so a recursive
+	// root reloaded from shareddir-recursive.dat at prefs-open is
+	// rendered bold straight away rather than only after the user
+	// happens to expand its branch. PrefsUnifiedDlg calls this and
+	// SetSharedDirectories back-to-back; without this refresh, only
+	// the explicit set would have been visualised on first paint.
+	if (m_IsInit) {
+		UpdateSharedDirectories();
+	}
+}
+
+
 wxString CDirectoryTreeCtrl::GetKey(const CPath& path)
 {
 	if (m_IsRemote) {
 		return path.GetRaw();
 	}
 
-	// Sanity check, see IsSameAs() in Path.cpp
-	const wxString cwd = wxGetCwd();
-	const int flags = (wxPATH_NORM_ALL | wxPATH_NORM_CASE) & ~wxPATH_NORM_ENV_VARS;
+	// Sanity check, see IsSameAs() in Path.cpp.  Skip wxGetCwd() when
+	// the path is already absolute — Normalize ignores cwd in that
+	// case, and wxGetCwd() emits a wxLogSysError for every call when
+	// the process's recorded CWD has been removed.
+	wxString cwd;
 	wxFileName fn(path.GetRaw());
+	if (!fn.IsAbsolute()) {
+		cwd = wxGetCwd();
+	}
+	// wxPATH_NORM_ALL is deprecated in wx3 — use explicit flags instead (excluding wxPATH_NORM_ENV_VARS)
+	const int flags = wxPATH_NORM_DOTS | wxPATH_NORM_TILDE | wxPATH_NORM_CASE | wxPATH_NORM_ABSOLUTE | wxPATH_NORM_LONG | wxPATH_NORM_SHORTCUT;
 	fn.Normalize(flags, cwd);
 	return fn.GetFullPath();
 }
@@ -337,12 +498,44 @@ void CDirectoryTreeCtrl::UpdateSharedDirectories()
 
 bool CDirectoryTreeCtrl::HasSharedSubdirectory(const CPath& path)
 {
-	SharedMap::iterator it = m_lstShared.upper_bound(GetKey(path) + wxFileName::GetPathSeparator());
-	if (it == m_lstShared.end()) {
-		return false;
+	// 1. An explicit-share entry lives below `path`. This is the
+	// original logic and covers the "user ticked /Pictures/2024"
+	// case where /Pictures should advertise that it contains a
+	// shared subdir.
+	{
+		SharedMap::iterator it =
+			m_lstShared.upper_bound(GetKey(path)
+				+ wxFileName::GetPathSeparator());
+		if (it != m_lstShared.end() && it->second.StartsWith(path)) {
+			return true;
+		}
 	}
-	// upper_bound() doesn't find the directory itself, so no need to check for that.
-	return it->second.StartsWith(path);
+
+	// 2. `path` itself is (or sits below) a recursive root. The
+	// recursive expansion implicitly shares every descendant of
+	// such a root, so by construction the folder has shared
+	// subdirs. Without this branch, recursive-only roots loaded
+	// from shareddir-recursive.dat would show plain bold without
+	// the "has shared subdirs" icon -- the m_lstShared check above
+	// returns false because the descendants live exclusively in
+	// the recursive expansion path, not in shareddir-explicit.dat.
+	if (IsRecursiveShare(path) || IsInsideRecursiveShare(path)) {
+		return true;
+	}
+
+	// 3. A recursive root sits below `path` (i.e. `path` is an
+	// ancestor of a marked root). Some descendant of `path` is
+	// shared via that root, so the icon should be on.
+	{
+		SharedMap::iterator it =
+			m_lstSharedRecursive.upper_bound(GetKey(path)
+				+ wxFileName::GetPathSeparator());
+		if (it != m_lstSharedRecursive.end() && it->second.StartsWith(path)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
@@ -357,14 +550,36 @@ void CDirectoryTreeCtrl::CheckChanged(wxTreeItemId hItem, bool bChecked, bool re
 	if (IsBold(hItem) != bChecked) {
 		SetItemBold(hItem, bChecked);
 
+		const CPath fullPath = GetFullPath(hItem);
+		bool wasRecursive = false;
 		if (bChecked) {
-			AddShare(GetFullPath(hItem));
+			AddShare(fullPath);
 		} else {
-			DelShare(GetFullPath(hItem));
+			DelShare(fullPath);
+			// Double-clicking a recursive-share root must also drop
+			// the recursive intent, otherwise the expansion task at
+			// commit time would re-flatten the subtree and the user
+			// would see the files reappear in the shared list. Calls
+			// from MarkChildren on descendants of a recursive root
+			// are harmless no-ops here (only the root is keyed in
+			// m_lstSharedRecursive).
+			wasRecursive = IsRecursiveShare(fullPath);
+			DelRecursiveShare(fullPath);
 		}
 
 		if (!recursed) {
 			UpdateParentItems(hItem, bChecked);
+			// If we just dropped the recursive marker on this item,
+			// the already-rendered descendants are still painted
+			// bold via IsInsideRecursiveShare from the original
+			// AddChildItem pass. That state isn't re-evaluated on
+			// its own when the marker disappears, so the user sees
+			// a "ghost selection" of grayed-out-but-bold subdirs.
+			// Walk the descendants and unbold them to keep the tree
+			// visually consistent with the now-empty state.
+			if (!bChecked && wasRecursive) {
+				MarkChildren(hItem, false, true);
+			}
 		}
 	}
 }
@@ -372,7 +587,7 @@ void CDirectoryTreeCtrl::CheckChanged(wxTreeItemId hItem, bool bChecked, bool re
 
 bool CDirectoryTreeCtrl::IsShared(const CPath& path)
 {
-	wxCHECK_MSG(path.IsOk(), false, wxT("Invalid path in IsShared"));
+	wxCHECK_MSG(path.IsOk(), false, "Invalid path in IsShared");
 
 	return m_lstShared.find(GetKey(path)) != m_lstShared.end();
 }
@@ -380,7 +595,7 @@ bool CDirectoryTreeCtrl::IsShared(const CPath& path)
 
 void CDirectoryTreeCtrl::AddShare(const CPath& path)
 {
-	wxCHECK_RET(path.IsOk(), wxT("Invalid path in AddShare"));
+	wxCHECK_RET(path.IsOk(), "Invalid path in AddShare");
 
 	if (IsShared(path)) {
 		return;
@@ -392,9 +607,88 @@ void CDirectoryTreeCtrl::AddShare(const CPath& path)
 
 void CDirectoryTreeCtrl::DelShare(const CPath& path)
 {
-	wxCHECK_RET(path.IsOk(), wxT("Invalid path in DelShare"));
+	wxCHECK_RET(path.IsOk(), "Invalid path in DelShare");
 
 	m_lstShared.erase(GetKey(path));
+}
+
+
+bool CDirectoryTreeCtrl::IsRecursiveShare(const CPath& path)
+{
+	return m_lstSharedRecursive.find(GetKey(path)) != m_lstSharedRecursive.end();
+}
+
+
+bool CDirectoryTreeCtrl::IsInsideRecursiveShare(const CPath& path)
+{
+	// True iff `path` is a strict descendant of any recursive-share
+	// root. Used by AddChildItem to bold subtree items when the tree
+	// is expanded long after the right-click that set the intent.
+	if (m_lstSharedRecursive.empty() || !path.IsOk()) {
+		return false;
+	}
+	const wxString key = GetKey(path);
+	for (SharedMap::const_iterator it = m_lstSharedRecursive.begin();
+		it != m_lstSharedRecursive.end(); ++it)
+	{
+		const wxString rootKey = it->first;
+		if (key.length() > rootKey.length()
+			&& key.StartsWith(rootKey)
+			&& (rootKey.empty()
+				|| rootKey.Last() == wxFileName::GetPathSeparator()
+				|| key[rootKey.length()] == wxFileName::GetPathSeparator()))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
+void CDirectoryTreeCtrl::AddRecursiveShare(const CPath& path)
+{
+	wxCHECK_RET(path.IsOk(), "Invalid path in AddRecursiveShare");
+
+	const wxString key = GetKey(path);
+	m_lstSharedRecursive.insert(SharedMapItem(key, path));
+}
+
+
+void CDirectoryTreeCtrl::DelRecursiveShare(const CPath& path)
+{
+	wxCHECK_RET(path.IsOk(), "Invalid path in DelRecursiveShare");
+
+	m_lstSharedRecursive.erase(GetKey(path));
+}
+
+
+void CDirectoryTreeCtrl::DelSharesUnder(const CPath& root)
+{
+	if (!root.IsOk() || m_lstShared.empty()) {
+		return;
+	}
+
+	// Compare on the normalized form, with a trailing separator so
+	// /home doesn't also match /home2. If the root happens to end in
+	// a separator already (e.g. the Windows drive root "C:\"), we
+	// use it as-is.
+	wxString prefix = GetKey(root);
+	if (prefix.empty()) {
+		return;
+	}
+	if (prefix.Last() != wxFileName::GetPathSeparator()) {
+		prefix += wxFileName::GetPathSeparator();
+	}
+
+	for (SharedMap::iterator it = m_lstShared.begin();
+		it != m_lstShared.end(); )
+	{
+		if (it->first.StartsWith(prefix)) {
+			it = m_lstShared.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 

@@ -30,7 +30,10 @@
 #include <common/Macros.h>		// Needed for itemsof()
 
 #include <wx/colordlg.h>
+#include <wx/progdlg.h>
+#include <wx/stdpaths.h>
 #include <wx/tooltip.h>
+#include <wx/utils.h>		// wxGetUserHome
 
 #include "amule.h"				// Needed for theApp
 #include "amuleDlg.h"
@@ -42,6 +45,7 @@
 #include "ClientList.h"
 #include "DirectoryTreeCtrl.h"	// Needed for CDirectoryTreeCtrl
 #include "Preferences.h"
+#include "SharedDirsApplyTask.h"		// Recursive-share expansion worker
 #include "muuli_wdr.h"
 #include "Logger.h"
 #include <common/Format.h>				// Needed for CFormat
@@ -53,7 +57,7 @@
 #include "UserEvents.h"
 #include "PlatformSpecific.h"		// Needed for PLATFORMSPECIFIC_CAN_PREVENT_SLEEP_MODE
 
-BEGIN_EVENT_TABLE(PrefsUnifiedDlg,wxDialog)
+wxBEGIN_EVENT_TABLE(PrefsUnifiedDlg,wxDialog)
 	// Events
 #define USEREVENTS_EVENT(ID, NAME, VARS) \
 	EVT_CHECKBOX(USEREVENTS_FIRST_ID + CUserEvents::ID * USEREVENTS_IDS_PER_EVENT + 1,	PrefsUnifiedDlg::OnCheckBoxChange) \
@@ -132,7 +136,7 @@ BEGIN_EVENT_TABLE(PrefsUnifiedDlg,wxDialog)
 
 	EVT_CLOSE(PrefsUnifiedDlg::OnClose)
 
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 
 /**
@@ -147,9 +151,9 @@ END_EVENT_TABLE()
 static void SendCheckBoxEvent(wxWindow* parent, int id)
 {
 	wxCheckBox* widget = CastByID(id, parent, wxCheckBox);
-	wxCHECK_RET(widget, wxT("Invalid widget in CreateEvent"));
+	wxCHECK_RET(widget, "Invalid widget in CreateEvent");
 
-	wxCommandEvent evt(wxEVT_COMMAND_CHECKBOX_CLICKED, id);
+	wxCommandEvent evt(wxEVT_CHECKBOX, id);
 	evt.SetInt(widget->IsChecked() ? 1 : 0);
 
 	parent->GetEventHandler()->ProcessEvent(evt);
@@ -207,7 +211,7 @@ wxDialog(parent, -1, _("Preferences"),
 
 	// Add the single column used
 	m_PrefsIcons->InsertColumn(
-		0, wxEmptyString, wxLIST_FORMAT_LEFT,
+		0, "", wxLIST_FORMAT_LEFT,
 		m_PrefsIcons->GetSize().GetWidth()-5);
 
 	// Temp variables for finding the smallest height and width needed
@@ -239,7 +243,7 @@ wxDialog(parent, -1, _("Preferences"),
 		}
 
 		// Add it to the sizer
-		prefs_sizer->Add(Widget, 0, wxGROW|wxEXPAND);
+		prefs_sizer->Add(Widget, wxSizerFlags().Expand().Expand());
 
 		if (pages[i].m_function == PreferencesGeneralTab) {
 			// This must be done now or pages won't Fit();
@@ -247,20 +251,54 @@ wxDialog(parent, -1, _("Preferences"),
 				CastChild(IDC_BROWSERTABS, wxCheckBox)->Enable(false);
 			#endif /* __WINDOWS__ */
 			CastChild(IDC_PREVIEW_NOTE, wxStaticText)->SetLabel(_("The following variables will be substituted:\n    %PARTFILE - full path to the file\n    %PARTNAME - file name only"));
-			#ifdef __WXMAC__
-				FindWindow(IDC_ENABLETRAYICON)->Show(false);
-				FindWindow(IDC_MINTRAY)->Show(false);
-			#else
-				FindWindow(IDC_MACHIDEONCLOSE)->Show(false);
-				thePrefs::SetHideOnClose(false);
-			#endif
+			// Tray-icon checkboxes (IDC_ENABLETRAYICON,
+			// IDC_MINTRAY) are visible on every platform now,
+			// including macOS. wxTaskBarIcon → NSStatusItem on
+			// Mac, NOTIFYICONDATA on Windows, GtkStatusIcon /
+			// libayatana SNI on Linux. macOS users who prefer
+			// the menu-bar status-item pattern (Spotify / Slack
+			// / Discord style) can opt in.
+#if defined(__WXGTK__) && !defined(WITH_LIBAYATANA_APPINDICATOR)
+			// On Linux without libayatana-appindicator3 the only
+			// backend wxTaskBarIcon can fall back to is the legacy
+			// GtkStatusIcon API, which GNOME Shell dropped in 3.26
+			// and wlroots-based compositors never implemented — the
+			// tray icon is silently invisible. Disable the option
+			// so users don't enable a feature that does nothing.
+			// (CamuleApp::OnInit force-clears UseTrayIcon at startup
+			// for the same reason, so dependent options cascade off
+			// even before the user opens this panel.)
+			FindWindow(IDC_ENABLETRAYICON)->Enable(false);
+			FindWindow(IDC_ENABLETRAYICON)->SetToolTip(
+				_("Tray icon support requires libayatana-appindicator3 at compile time."));
+#endif
+
+#ifdef __WXGTK__
+			// xdg-shell intentionally doesn't deliver iconified-state
+			// notifications to clients, so the system minimize button
+			// on Wayland cannot trigger our hide-to-tray path. Same
+			// gap is documented across qBittorrent / Telegram /
+			// KeePassXC / Slack — none of them have a fix either.
+			// Grey out the option with a tooltip so the user
+			// understands why; the runtime sanity check in
+			// CamuleApp::OnInit keeps DoMinToTray() returning false
+			// regardless of the saved value.
+			if (CamuleAppCommon::IsWaylandSession()) {
+				FindWindow(IDC_MINTRAY)->SetToolTip(
+					_("Not available on Wayland: the protocol does not "
+					  "report when a window is minimized, so this option "
+					  "cannot intercept the system minimize button. "
+					  "Workaround: launch aMule with `GDK_BACKEND=x11` "
+					  "to use XWayland instead."));
+			}
+#endif
 		} else if (pages[i].m_function == PreferencesEventsTab) {
 
-#define USEREVENTS_REPLACE_VAR(VAR, DESC, CODE)	+ wxString(wxT("\n  %") VAR wxT(" - ")) + wxGetTranslation(DESC)
-#define USEREVENTS_EVENT(ID, NAME, VARS) case CUserEvents::ID: CreateEventPanels(idx, wxEmptyString VARS, Widget); break;
+#define USEREVENTS_REPLACE_VAR(VAR, DESC, CODE)	+ wxString("\n  %" VAR " - ") + wxGetTranslation(DESC)
+#define USEREVENTS_EVENT(ID, NAME, VARS) case CUserEvents::ID: CreateEventPanels(idx, "" VARS, Widget); break;
 
 			wxListCtrl *list = CastChild(IDC_EVENTLIST, wxListCtrl);
-			list->InsertColumn(0, wxEmptyString);
+			list->InsertColumn(0, "");
 			for (unsigned int idx = 0; idx < CUserEvents::GetCount(); ++idx) {
 				long lidx = list->InsertItem(idx,
 					wxGetTranslation(CUserEvents::GetDisplayName(
@@ -272,7 +310,7 @@ wxDialog(parent, -1, _("Preferences"),
 						USEREVENTS_EVENTLIST()
 						/* This macro expands to handle all user event types. Here is an example:
 						   case CUserEvents::NewChatSession: {
-						       CreateEventPanels(idx, wxString(wxT("\n %SENDER - ")) + wxTRANSLATE("Message sender."), Widget);
+						       CreateEventPanels(idx, wxString("\n %SENDER - ") + wxTRANSLATE("Message sender."), Widget);
 						       break;
 						   } */
 					}
@@ -325,7 +363,7 @@ wxDialog(parent, -1, _("Preferences"),
 
 	// Default to the General tab
 	m_CurrentPanel = DefaultWidget;
-	prefs_sizer->Add(DefaultWidget, 0, wxGROW|wxEXPAND);
+	prefs_sizer->Add(DefaultWidget, wxSizerFlags().Expand().Expand());
 	m_CurrentPanel->Show( true );
 
 	// Select the first item
@@ -402,7 +440,13 @@ bool PrefsUnifiedDlg::TransferToWindow()
 		}
 	}
 
-	m_ShareSelector->SetSharedDirectories(&theApp->glob_prefs->shareddir_list);
+	// Load the user's intent (explicit non-recursive vs marked-recursive
+	// roots) into the tree control's two maps. shareddir_list itself
+	// is the runtime expansion -- not useful as UI state since it
+	// includes auto-discovered subdirs that shouldn't render as
+	// user-selected.
+	m_ShareSelector->SetSharedDirectories(&theApp->glob_prefs->shareddir_explicit_list);
+	m_ShareSelector->SetRecursiveSharedDirectories(&theApp->glob_prefs->shareddir_recursive_list);
 
 	for ( int i = 0; i < cntStatColors; i++ ) {
 		thePrefs::s_colors[i] = CMuleColour(CStatisticsDlg::acrStat[i]).GetULong();
@@ -437,13 +481,20 @@ bool PrefsUnifiedDlg::TransferToWindow()
 	FindWindow( IDC_STARTNEXTFILE_SAME )->Enable(thePrefs::StartNextFile());
 	FindWindow( IDC_STARTNEXTFILE_ALPHA )->Enable(thePrefs::StartNextFile());
 
-	FindWindow(IDC_MACHIDEONCLOSE)->Enable(true);
-	FindWindow(IDC_EXIT)->Enable(!thePrefs::HideOnClose());
-	if (thePrefs::HideOnClose()) {
-		CastChild(IDC_EXIT, wxCheckBox)->SetValue(false);
-	}
+	// The tray icon is the only recovery surface for a window hidden
+	// via the close button: on Linux/Windows the option needs the tray
+	// to bring the window back, and on macOS the matching code path
+	// (NSApplicationActivationPolicyAccessory) drops the Dock icon
+	// while hidden, so the tray is also the only way back there.
+	FindWindow(IDC_MACHIDEONCLOSE)->Enable(thePrefs::UseTrayIcon());
 
-	FindWindow(IDC_MINTRAY)->Enable(thePrefs::UseTrayIcon());
+#ifdef __WXGTK__
+	const bool minTrayUsable = thePrefs::UseTrayIcon()
+		&& !CamuleAppCommon::IsWaylandSession();
+#else
+	const bool minTrayUsable = thePrefs::UseTrayIcon();
+#endif
+	FindWindow(IDC_MINTRAY)->Enable(minTrayUsable);
 
 	if (!CastChild(IDC_MSGFILTER, wxCheckBox)->IsChecked()) {
 		FindWindow(IDC_MSGFILTER_ALL)->Enable(false);
@@ -540,8 +591,11 @@ bool PrefsUnifiedDlg::TransferFromWindow()
 		}
 	}
 
-	theApp->glob_prefs->shareddir_list.clear();
-	m_ShareSelector->GetSharedDirectories(&theApp->glob_prefs->shareddir_list);
+	// shareddir_list is committed separately from OnOk (see
+	// CommitSharedDirsWithProgress) so that recursive-share expansion
+	// can run on a worker thread with a progress dialog and a cancel
+	// button. Doing it eagerly here would re-introduce the multi-
+	// minute UI freeze that issue #592 hit on /home-sized roots.
 
 	for ( int i = 0; i < cntStatColors; i++ ) {
 		if ( thePrefs::s_colors[i] != thePrefs::s_colors_ref[i] ) {
@@ -589,6 +643,21 @@ void PrefsUnifiedDlg::OnOk(wxCommandEvent& WXUNUSED(event))
 {
 	TransferFromWindow();
 
+	// Commit the share list with the recursive-expand-on-worker-
+	// thread path. Done after TransferFromWindow (so other prefs
+	// are already populated in glob_prefs) but before Save() so a
+	// successful commit ends up in shareddir.dat alongside the rest.
+	// If the user cancels at the confirm or the progress dialog,
+	// bail out of OnOk *before* anything is persisted — so the prefs
+	// dialog stays open and the user can adjust their selection
+	// without losing the rest of their pending pref changes.
+	const SharedDirsCommitResult shareResult = CommitSharedDirsWithProgress();
+	if (shareResult == SharedDirsCommitResult::CancelledByUser) {
+		return;
+	}
+	const bool sharedDirsCommitted =
+		(shareResult == SharedDirsCommitResult::Committed);
+
 	bool restart_needed = false;
 	wxString restart_needed_msg = _("aMule must be restarted to enable these changes:\n\n");
 
@@ -625,7 +694,7 @@ void PrefsUnifiedDlg::OnOk(wxCommandEvent& WXUNUSED(event))
 	// Force port checking
 	thePrefs::SetPort(thePrefs::GetPort());
 
-	if ((CPath::GetFileSize(thePrefs::GetConfigDir() + wxT("addresses.dat")) == 0) &&
+	if ((CPath::GetFileSize(thePrefs::GetConfigDir() + "addresses.dat") == 0) &&
 		CastChild(IDC_AUTOSERVER, wxCheckBox)->IsChecked() ) {
 		thePrefs::UnsetAutoServerStart();
 		wxMessageBox(_("Your Auto-update server list is empty.\n'Auto-update server list at startup' will be disabled."),
@@ -660,8 +729,20 @@ void PrefsUnifiedDlg::OnOk(wxCommandEvent& WXUNUSED(event))
 		restart_needed_msg += _("- ED2K network enabled.\n");
 	}
 
-	if (CfgChanged(IDC_INCFILES) || CfgChanged(IDC_TEMPFILES) || m_ShareSelector->HasChanged ) {
+	// CommitSharedDirsWithProgress already ran Reload (with progress
+	// + cancel) when shareddir_list itself changed. We only need to
+	// trigger a fresh Reload here for the other paths IDC_INCFILES /
+	// IDC_TEMPFILES affect.
+	if (!sharedDirsCommitted
+		&& (CfgChanged(IDC_INCFILES) || CfgChanged(IDC_TEMPFILES)))
+	{
 		theApp->sharedfiles->Reload();
+	}
+
+	if (CfgChanged(IDC_AUTO_RESCAN_SHARED)) {
+		// Start or stop the fs-watcher immediately so the user sees the
+		// effect of toggling without needing to restart amuled.
+		theApp->sharedfiles->EnableDirectoryWatcher(thePrefs::AutoRescanSharedDirs());
 	}
 
 	if (CfgChanged(IDC_OSDIR) || CfgChanged(IDC_ONLINESIG)) {
@@ -851,7 +932,7 @@ void PrefsUnifiedDlg::OnCheckBoxChange(wxCommandEvent& event)
 			break;
 
 		case IDC_AUTOSERVER:
-			if ((CPath::GetFileSize(thePrefs::GetConfigDir() + wxT("addresses.dat")) == 0) &&
+			if ((CPath::GetFileSize(thePrefs::GetConfigDir() + "addresses.dat") == 0) &&
 				CastChild(event.GetId(), wxCheckBox)->IsChecked() ) {
 				wxMessageBox(_("Your Auto-update servers list is in blank.\nPlease fill in at least one URL to point to a valid server.met file.\nClick on the button \"List\" by this checkbox to enter an URL."),
 					_("Message"), wxOK | wxICON_INFORMATION);
@@ -911,13 +992,13 @@ void PrefsUnifiedDlg::OnCheckBoxChange(wxCommandEvent& event)
 			FindWindow(IDC_STARTNEXTFILE_ALPHA)->Enable(value);
 			break;
 
-		case IDC_MACHIDEONCLOSE:
-			FindWindow(IDC_EXIT)->Enable(!value);
-			CastChild(IDC_EXIT, wxCheckBox)->SetValue(!value && thePrefs::IsConfirmExitEnabled());
-			break;
-
 		case IDC_ENABLETRAYICON:
 			FindWindow(IDC_MINTRAY)->Enable(value);
+			// HideOnClose's recovery surface is the tray icon, so its
+			// checkbox follows tray-icon state too. Live-update both
+			// here so the user doesn't have to close + reopen prefs to
+			// see dependent options gate correctly.
+			FindWindow(IDC_MACHIDEONCLOSE)->Enable(value);
 			if (value) {
 				theApp->amuledlg->CreateSystray();
 			} else {
@@ -1052,13 +1133,13 @@ void PrefsUnifiedDlg::OnButtonBrowseApplication(wxCommandEvent& event)
 	}
 	wxString wildcard = CFormat(_("Executable%s"))
 #ifdef __WINDOWS__
-		% wxT(" (*.exe)|*.exe");
+		% " (*.exe)|*.exe";
 #else
-		% wxT("|*");
+		% "|*";
 #endif
 
-	wxString str = wxFileSelector( title, wxEmptyString, wxEmptyString,
-		wxEmptyString, wildcard, 0, this );
+	wxString str = wxFileSelector( title, "", "",
+		"", wildcard, 0, this );
 
 	if ( !str.IsEmpty() ) {
 		wxTextCtrl* widget = CastChild( id, wxTextCtrl );
@@ -1069,7 +1150,7 @@ void PrefsUnifiedDlg::OnButtonBrowseApplication(wxCommandEvent& event)
 
 void PrefsUnifiedDlg::OnButtonEditAddr(wxCommandEvent& WXUNUSED(evt))
 {
-	wxString fullpath( thePrefs::GetConfigDir() + wxT("addresses.dat") );
+	wxString fullpath( thePrefs::GetConfigDir() + "addresses.dat" );
 
 	EditServerListDlg* test = new EditServerListDlg(this, _("Edit server list"),
 		_("Add here URL's to download server.met files.\nOnly one url on each line."),
@@ -1102,7 +1183,7 @@ void PrefsUnifiedDlg::OnPrefsPageChange(wxListEvent& event)
 		CastChild(IDC_SHARESELECTOR, CDirectoryTreeCtrl)->Init();
 	}
 
-	prefs_sizer->Add( m_CurrentPanel, 0, wxGROW|wxEXPAND );
+	prefs_sizer->Add( m_CurrentPanel, wxSizerFlags().Expand().Expand());
 	m_CurrentPanel->Show( true );
 
 	Layout();
@@ -1243,45 +1324,351 @@ void PrefsUnifiedDlg::CreateEventPanels(const int idx, const wxString& vars, wxW
 	wxStaticBoxSizer *item7 = new wxStaticBoxSizer( item8, wxVERTICAL );
 
 	wxCheckBox *item9 = new wxCheckBox( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 1, _("Enable command execution on core"), wxDefaultPosition, wxDefaultSize, 0 );
-	item7->Add( item9, 0, wxALIGN_CENTER_VERTICAL|wxLEFT|wxRIGHT, 5 );
+	item7->Add( item9, wxSizerFlags().CenterVertical().Border(wxLEFT|wxRIGHT, 5) );
 
 	wxFlexGridSizer *item10 = new wxFlexGridSizer( 3, 0, 0 );
 	item10->AddGrowableCol( 2 );
 
-	item10->Add( 20, 20, 0, wxALIGN_CENTER|wxALL, 0 );
+	item10->Add( 20, 20, wxSizerFlags().Center() );
 
 	wxStaticText *item11 = new wxStaticText( parent, -1, _("Core command:"), wxDefaultPosition, wxDefaultSize, 0 );
-	item10->Add( item11, 0, wxALIGN_CENTER|wxALL, 5 );
+	item10->Add( item11, wxSizerFlags().Center().Border(wxALL, 5) );
 
-	wxTextCtrl *item12 = new wxTextCtrl( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 2, wxT(""), wxDefaultPosition, wxDefaultSize, 0 );
+	wxTextCtrl *item12 = new wxTextCtrl( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 2, "", wxDefaultPosition, wxDefaultSize, 0 );
 	item12->Enable(CUserEvents::IsCoreCommandEnabled(static_cast<enum CUserEvents::EventType>(idx)));
-	item10->Add( item12, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+	item10->Add( item12, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 5) );
 
-	item7->Add( item10, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 0 );
+	item7->Add( item10, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 0) );
 
 	wxCheckBox *item14 = new wxCheckBox( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 3, _("Enable command execution on GUI"), wxDefaultPosition, wxDefaultSize, 0 );
-	item7->Add( item14, 0, wxALIGN_CENTER_VERTICAL|wxLEFT|wxRIGHT, 5 );
+	item7->Add( item14, wxSizerFlags().CenterVertical().Border(wxLEFT|wxRIGHT, 5) );
 
 	wxFlexGridSizer *item15 = new wxFlexGridSizer( 3, 0, 0 );
 	item15->AddGrowableCol( 2 );
 
-	item15->Add( 20, 20, 0, wxALIGN_CENTER|wxALL, 0 );
+	item15->Add( 20, 20, wxSizerFlags().Center() );
 
 	wxStaticText *item16 = new wxStaticText( parent, -1, _("GUI command:"), wxDefaultPosition, wxDefaultSize, 0 );
-	item15->Add( item16, 0, wxALIGN_CENTER|wxALL, 5 );
+	item15->Add( item16, wxSizerFlags().Center().Border(wxALL, 5) );
 
-	wxTextCtrl *item17 = new wxTextCtrl( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 4, wxT(""), wxDefaultPosition, wxDefaultSize, 0 );
+	wxTextCtrl *item17 = new wxTextCtrl( parent, USEREVENTS_FIRST_ID + idx * USEREVENTS_IDS_PER_EVENT + 4, "", wxDefaultPosition, wxDefaultSize, 0 );
 	item17->Enable(CUserEvents::IsGUICommandEnabled(static_cast<enum CUserEvents::EventType>(idx)));
-	item15->Add( item17, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+	item15->Add( item17, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 5) );
 
-	item7->Add( item15, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 0 );
+	item7->Add( item15, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 0) );
 
 	wxStaticText *item13 = new wxStaticText( parent, -1, _("The following variables will be replaced:") + vars, wxDefaultPosition, wxDefaultSize, 0 );
-	item7->Add( item13, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+	item7->Add( item13, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 5) );
 
-	IDC_PREFS_EVENTS_PAGE->Add(item7, 0, wxGROW|wxALIGN_CENTER_VERTICAL|wxALL, 5);
+	IDC_PREFS_EVENTS_PAGE->Add(item7, wxSizerFlags().Expand().CenterVertical().Border(wxALL, 5));
 
 	IDC_PREFS_EVENTS_PAGE->Layout();
 	IDC_PREFS_EVENTS_PAGE->Hide(idx + 1);
+}
+
+
+namespace {
+
+// Hard-coded list of paths that look like obvious "did you really mean
+// to share this?" candidates. Matched by IsSensitiveSharePath as either
+// the exact path or a strict descendant (separator-boundary aware),
+// so e.g. ~/Documents/Tax2024 is flagged because ~/Documents is on
+// the list. Empty list entries are skipped.
+//
+// This is not meant to be exhaustive — its job is to catch the most
+// common "accidental right-click" cases (issue #592) by raising a
+// confirmation dialog, not to be a privacy boundary. Users can always
+// say "Yes I really do want this" and proceed.
+wxArrayString BuildSensitivePathList()
+{
+	wxArrayString out;
+
+	auto pushIfNotEmpty = [&out](const wxString & s) {
+		if (!s.IsEmpty()) {
+			out.Add(s);
+		}
+	};
+
+	const wxString home = wxGetUserHome();
+	pushIfNotEmpty(home);
+	if (!home.IsEmpty()) {
+		const wxChar sep = wxFileName::GetPathSeparator();
+		pushIfNotEmpty(home + sep + "Documents");
+		pushIfNotEmpty(home + sep + "Desktop");
+		pushIfNotEmpty(home + sep + "Pictures");
+		pushIfNotEmpty(home + sep + "Library");        // macOS
+		pushIfNotEmpty(home + sep + "AppData");        // Windows
+		pushIfNotEmpty(home + sep + ".aMule");
+		pushIfNotEmpty(home + sep + ".config");
+		pushIfNotEmpty(home + sep + ".ssh");
+		pushIfNotEmpty(home + sep + ".gnupg");
+	}
+
+#ifdef __WINDOWS__
+	pushIfNotEmpty("C:\\");
+	pushIfNotEmpty("C:\\Windows");
+	pushIfNotEmpty("C:\\Program Files");
+	pushIfNotEmpty("C:\\Program Files (x86)");
+	pushIfNotEmpty("C:\\ProgramData");
+	pushIfNotEmpty("C:\\Users");          // parent of every user's home
+#else
+	pushIfNotEmpty("/");
+	pushIfNotEmpty("/etc");
+	pushIfNotEmpty("/var");
+	pushIfNotEmpty("/tmp");
+	pushIfNotEmpty("/boot");
+	pushIfNotEmpty("/usr");
+	pushIfNotEmpty("/home");              // parent of every user's home on Linux
+	pushIfNotEmpty("/root");              // root user's home on Linux
+	pushIfNotEmpty("/Applications");      // macOS
+	pushIfNotEmpty("/System");            // macOS
+	pushIfNotEmpty("/Users");             // parent of every user's home on macOS
+#endif
+
+	return out;
+}
+
+bool IsSensitiveSharePath(const CPath & path)
+{
+	static const wxArrayString sensitive = BuildSensitivePathList();
+	const wxString raw = path.GetRaw();
+	const wxChar sep = wxFileName::GetPathSeparator();
+	for (size_t i = 0; i < sensitive.GetCount(); ++i) {
+		const wxString & root = sensitive[i];
+		if (raw == root) {
+			return true;
+		}
+		// Prefix match with a separator boundary so /home doesn't
+		// also flag /home2 or /homework. The length floor at 4 keeps
+		// "filesystem-root" entries — `/` (1 char) and `C:\` (3 chars)
+		// — exact-match-only: otherwise every path on the platform
+		// would be a descendant of the root and every share would
+		// trip the confirm dialog. Real subtrees like `/etc`, `/var`,
+		// `C:\Windows` keep their prefix-match behaviour.
+		if (root.length() >= 4
+			&& raw.length() > root.length()
+			&& raw.StartsWith(root)
+			&& (root.Last() == sep || raw[root.length()] == sep))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+} // namespace
+
+
+PrefsUnifiedDlg::SharedDirsCommitResult
+PrefsUnifiedDlg::CommitSharedDirsWithProgress()
+{
+	if (!m_ShareSelector || !m_ShareSelector->HasChanged) {
+		return SharedDirsCommitResult::NothingToCommit;
+	}
+
+	CDirectoryTreeCtrl::PathList explicitShares;
+	CDirectoryTreeCtrl::PathList recursiveIntents;
+	m_ShareSelector->GetSharedDirectories(&explicitShares);
+	m_ShareSelector->GetRecursiveSharedDirectories(&recursiveIntents);
+
+	// Strip entries that are descendants of a recursive root: the
+	// UI's right-click handler populates m_lstShared with the already-
+	// rendered subtree as a side-effect of MarkChildren (so the
+	// in-tree visual stays consistent), but those subdirs aren't
+	// "explicit" intent -- they're the recursive expansion. Without
+	// this filter they'd land in shareddir-explicit.dat and stick
+	// around as orphan pinned paths if the user later removed the
+	// recursive marker externally (no DelSharesUnder cleanup runs
+	// outside the UI). Filter at the commit boundary keeps the
+	// canonical files semantically clean.
+	if (!recursiveIntents.empty()) {
+		const wxChar sep = wxFileName::GetPathSeparator();
+		auto isInsideRecursive = [&recursiveIntents, sep](const CPath & p) {
+			const wxString target = p.GetRaw();
+			for (const CPath & root : recursiveIntents) {
+				const wxString r = root.GetRaw();
+				if (r.IsEmpty()) {
+					continue;
+				}
+				if (target == r) {
+					return true;
+				}
+				if (target.length() > r.length() &&
+					target.StartsWith(r) &&
+					(r.Last() == sep || target[r.length()] == sep)) {
+					return true;
+				}
+			}
+			return false;
+		};
+		CDirectoryTreeCtrl::PathList filtered;
+		filtered.reserve(explicitShares.size());
+		for (const CPath & p : explicitShares) {
+			if (!isInsideRecursive(p)) {
+				filtered.push_back(p);
+			}
+		}
+		explicitShares.swap(filtered);
+	}
+
+	// Confirm before expanding sensitive recursive roots.
+	std::vector<CPath> sensitive;
+	for (const CPath & p : recursiveIntents) {
+		if (IsSensitiveSharePath(p)) {
+			sensitive.push_back(p);
+		}
+	}
+	if (!sensitive.empty()) {
+		wxString msg = _("The following folders look like system or sensitive locations:\n\n");
+		for (const CPath & p : sensitive) {
+			msg += "  " + p.GetPrintable() + "\n";
+		}
+		msg += "\n";
+		msg += _("Sharing them recursively will publish every file underneath on the eD2k/Kad networks. Do you really want to do this?");
+		const int rv = wxMessageBox(msg,
+			_("Confirm shared folders"),
+			wxICON_QUESTION | wxYES_NO | wxNO_DEFAULT, this);
+		if (rv != wxYES) {
+			return SharedDirsCommitResult::CancelledByUser;
+		}
+	}
+
+	// Snapshot the current shared-dirs state so we can restore it
+	// atomically if the user cancels at any phase (expansion or
+	// reload). Cancel means "leave my saved state alone" — we do not
+	// persist a half-committed list to disk. All three lists are
+	// captured: the explicit/recursive intent + the runtime union,
+	// since SaveSharedFolders persists all three together.
+	const CDirectoryTreeCtrl::PathList originalShares =
+		theApp->glob_prefs->shareddir_list;
+	const CDirectoryTreeCtrl::PathList originalExplicit =
+		theApp->glob_prefs->shareddir_explicit_list;
+	const CDirectoryTreeCtrl::PathList originalRecursive =
+		theApp->glob_prefs->shareddir_recursive_list;
+
+	// One progress dialog covers both phases: the optional recursive
+	// expansion, plus the always-present Reload phase. Even a single
+	// double-click add of one folder still triggers a full Reload of
+	// CSharedFileList, which on a large library (200k+ files) freezes
+	// the UI for a couple of minutes — so the progress UI applies
+	// regardless of whether expansion preceded it. The dialog
+	// auto-hides on Update(100), so on small libraries where Reload
+	// finishes in milliseconds it just flashes briefly.
+	//
+	// The initial body text reflects which phase will run first: if
+	// there is a recursive intent we start in the expansion walk, if
+	// not we go straight into the file-list Reload.
+	const wxString initialBody = recursiveIntents.empty()
+		? _("Reloading shared files…")
+		: _("Scanning for subdirectories…");
+	wxProgressDialog progress(_("Updating shared folders"),
+		initialBody,
+		/*maximum=*/100,
+		this,
+		wxPD_CAN_ABORT | wxPD_APP_MODAL | wxPD_AUTO_HIDE);
+
+	CDirectoryTreeCtrl::PathList finalShares = explicitShares;
+
+	// ----- Phase 1: optional recursive expansion ---------------------
+	//
+	// Pass `this` as the event owner so progress and done events flow
+	// back into our event handlers below — keeping the GTK main loop
+	// alive during the walk, which in turn keeps the Cancel button on
+	// the progress dialog responsive. A pure polling loop with
+	// wxMilliSleep+Yield works on Cocoa but starves GTK's event queue
+	// and makes the whole UI feel frozen.
+	if (!recursiveIntents.empty()) {
+		CSharedDirsApplyTask task(explicitShares, recursiveIntents, this);
+		if (task.Create() != wxTHREAD_NO_ERROR
+			|| task.Run() != wxTHREAD_NO_ERROR)
+		{
+			// Worker couldn't start. Fall back to the explicit list
+			// (no recursion) so the user at least gets the non-
+			// recursive part of their selection saved.
+			finalShares = explicitShares;
+		} else {
+			bool done = false;
+			bool userCancelled = false;
+			auto onProgress = [&](wxThreadEvent & ev) {
+				const wxString status = CFormat(_("Scanned %u directories…"))
+					% static_cast<unsigned>(ev.GetInt());
+				if (!progress.Pulse(status)) {
+					task.Cancel();   // wxThread::Delete joins the worker
+					userCancelled = true;
+					done = true;
+				}
+			};
+			auto onDone = [&](wxThreadEvent & ev) {
+				userCancelled = userCancelled || (ev.GetInt() != 0);
+				done = true;
+			};
+			Bind(wxEVT_SHARED_DIRS_APPLY_PROGRESS, onProgress);
+			Bind(wxEVT_SHARED_DIRS_APPLY_DONE,     onDone);
+
+			while (!done) {
+				wxTheApp->Yield(/*onlyIfNeeded=*/false);
+			}
+
+			Unbind(wxEVT_SHARED_DIRS_APPLY_PROGRESS, onProgress);
+			Unbind(wxEVT_SHARED_DIRS_APPLY_DONE,     onDone);
+			task.Wait();
+
+			if (userCancelled || task.WasCancelled()) {
+				// shareddir_list was never touched yet — nothing to
+				// roll back.
+				progress.Update(100);
+				return SharedDirsCommitResult::CancelledByUser;
+			}
+			finalShares = task.GetExpandedShares();
+		}
+	}
+
+	// ----- Phase 2: persist + reload --------------------------------
+	//
+	// Update all three canonical/derived lists on the Preferences
+	// instance and persist them to disk *before* invoking Reload():
+	// FindSharedFiles starts by calling ReloadSharedFolders() which
+	// re-reads from disk, so the in-memory state alone isn't enough.
+	// shareddir-explicit.dat and shareddir-recursive.dat record the
+	// user's intent (non-recursive vs recursive roots); shareddir.dat
+	// is regenerated as the runtime union (= finalShares from the
+	// apply walk) so older binaries still see the right paths.
+	theApp->glob_prefs->shareddir_explicit_list  = explicitShares;
+	theApp->glob_prefs->shareddir_recursive_list = recursiveIntents;
+	theApp->glob_prefs->shareddir_list           = finalShares;
+	theApp->glob_prefs->SaveSharedFolders();
+
+	bool reloadAborted = false;
+	auto reloadYield = [&progress, &reloadAborted](size_t filesScanned) -> bool {
+		const wxString msg = CFormat(_("Reloading shared files: %u files scanned"))
+			% static_cast<unsigned>(filesScanned);
+		if (!progress.Pulse(msg)) {
+			reloadAborted = true;
+			return false;
+		}
+		return true;
+	};
+
+	const bool reloadOk = theApp->sharedfiles->Reload(reloadYield);
+	progress.Update(100);
+
+	if (!reloadOk || reloadAborted) {
+		// Roll back: both the in-memory state and the on-disk
+		// files (shareddir.dat + shareddir-explicit.dat +
+		// shareddir-recursive.dat) have to be reverted. The
+		// in-memory shared-file map is partially populated against
+		// the new list, so rebuild it from the restored list
+		// (without a yield callback — the restored list is by
+		// construction the one the user was already running with
+		// before this OK click).
+		theApp->glob_prefs->shareddir_list           = originalShares;
+		theApp->glob_prefs->shareddir_explicit_list  = originalExplicit;
+		theApp->glob_prefs->shareddir_recursive_list = originalRecursive;
+		theApp->glob_prefs->SaveSharedFolders();
+		theApp->sharedfiles->Reload(nullptr);
+		return SharedDirsCommitResult::CancelledByUser;
+	}
+
+	return SharedDirsCommitResult::Committed;
 }
 // File_checked_for_headers

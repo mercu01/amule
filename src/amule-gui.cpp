@@ -33,7 +33,10 @@
 
 #include "SharedFilesWnd.h"		// Needed for CSharedFilesWnd
 #include "Timer.h"				// Needed for CTimer
+#include "AppImageIntegration.h"	// Needed for AppImage first-run prompt
+#include "CamuleArtProvider.h"	// Needed for wxArtProvider::Push() in OnInit
 #include "PartFile.h"			// Needed for CPartFile
+#include "PartFileHashThread.h"	// Needed for EVT_PARTFILE_HASH_RESULT
 
 #include "muuli_wdr.h"			// Needed for IDs
 #include "amuleDlg.h"			// Needed for CamuleDlg
@@ -50,18 +53,7 @@
 #ifndef CLIENT_GUI
 #include "InternalEvents.h"		// Needed for wxEVT_*
 
-BEGIN_EVENT_TABLE(CamuleGuiApp, wxApp)
-
-#ifndef ASIO_SOCKETS
-	// Socket handlers
-	// Listen Socket
-	EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleGuiApp::ListenSocketHandler)
-
-	// UDP Socket (servers)
-	EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
-	// UDP Socket (clients)
-	EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
-#endif
+wxBEGIN_EVENT_TABLE(CamuleGuiApp, wxApp)
 
 	// Socket timers (TCP + UDP)
 	EVT_MULE_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleGuiApp::OnTCPTimer)
@@ -82,6 +74,9 @@ BEGIN_EVENT_TABLE(CamuleGuiApp, wxApp)
 	EVT_MULE_HASHING(CamuleGuiApp::OnFinishedHashing)
 	EVT_MULE_AICH_HASHING(CamuleGuiApp::OnFinishedAICHHashing)
 
+	// CPartFileHashThread per-part result
+	EVT_PARTFILE_HASH_RESULT(CamuleGuiApp::OnPartFileHashResult)
+
 	// File completion ended notifier
 	EVT_MULE_FILE_COMPLETED(CamuleGuiApp::OnFinishedCompletion)
 
@@ -90,7 +85,14 @@ BEGIN_EVENT_TABLE(CamuleGuiApp, wxApp)
 
 	// Disk space preallocation finished
 	EVT_MULE_ALLOC_FINISHED(CamuleGuiApp::OnFinishedAllocation)
-END_EVENT_TABLE()
+
+	// macOS Dock right-click → Quit and system session end.
+	// Normal exit paths (red X, Cmd+Q, File > Quit) go through CamuleDlg::OnClose
+	// → ShutDown → OnExit. The Dock "Quit" path on macOS skips OnClose and
+	// requires an EVT_END_SESSION handler to ensure cleanup runs.
+	EVT_QUERY_END_SESSION(CamuleGuiApp::OnQueryEndSession)
+	EVT_END_SESSION(CamuleGuiApp::OnEndSession)
+wxEND_EVENT_TABLE()
 
 
 IMPLEMENT_APP(CamuleGuiApp)
@@ -154,25 +156,25 @@ int CamuleGuiBase::InitGui(bool geometry_enabled, wxString &geom_string)
 		long y = display.y;
 
 		// Tokenize the string
-		wxStringTokenizer tokens(geom_string, wxT("xX+-"));
+		wxStringTokenizer tokens(geom_string, "xX+-");
 
 		// First part: Program width
 		if ( tokens.GetNextToken().ToLong( &width ) ) {
 			wxString prefix = geom_string[ tokens.GetPosition() - 1 ];
-			if ( prefix == wxT("x") || prefix == wxT("X") ) {
+			if ( prefix == "x" || prefix == "X" ) {
 				// Second part: Program height
 				if ( tokens.GetNextToken().ToLong( &height ) ) {
 					prefix = geom_string[ tokens.GetPosition() - 1 ];
-					if ( prefix == wxT("+") || prefix == wxT("-") ) {
+					if ( prefix == "+" || prefix == "-" ) {
 						// Third part: X-Offset
 						if ( tokens.GetNextToken().ToLong( &x ) ) {
-							if ( prefix == wxT("-") )
+							if ( prefix == "-" )
 								x = display.GetRight() - ( width + x );
 							prefix = geom_string[ tokens.GetPosition() - 1 ];
-							if ( prefix == wxT("+") || prefix == wxT("-") ) {
+							if ( prefix == "+" || prefix == "-" ) {
 								// Fourth part: Y-Offset
 								if ( tokens.GetNextToken().ToLong( &y ) ) {
-									if ( prefix == wxT("-") )
+									if ( prefix == "-" )
 										y = display.GetBottom() - ( height + y );
 								}
 							}
@@ -208,9 +210,9 @@ void CamuleGuiBase::ResetTitle()
 {
 #ifdef SVNDATE
 	#ifdef CLIENT_GUI
-		m_FrameTitle = CFormat(wxT("aMule remote control %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
+		m_FrameTitle = CFormat("aMule remote control %s %s") % VERSION % SVNDATE;
 	#else
-		m_FrameTitle = CFormat(wxT("aMule %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
+		m_FrameTitle = CFormat("aMule %s %s") % VERSION % SVNDATE;
 	#endif
 #else
 	#ifdef CLIENT_GUI
@@ -220,8 +222,8 @@ void CamuleGuiBase::ResetTitle()
 	#endif
 
 	if (thePrefs::ShowVersionOnTitle()) {
-		m_FrameTitle += wxT(' ');
-		m_FrameTitle += wxT( VERSION );
+		m_FrameTitle += ' ';
+		m_FrameTitle += VERSION;
 	}
 #endif
 }
@@ -287,9 +289,63 @@ void CamuleGuiApp::ShutDown(wxCloseEvent &WXUNUSED(evt))
 }
 
 
+// macOS Dock right-click → Quit bypasses OnClose. wxWidgets posts a session-end
+// event for this path; drive the same ShutDown sequence so the destructor
+// chain (~CPartFile → FlushBuffer → SavePartFile) runs and download progress
+// is persisted.
+void CamuleGuiApp::OnQueryEndSession(wxCloseEvent& evt)
+{
+	// Mark the app as quitting before letting wx propagate the close
+	// to top-level windows. CamuleDlg::OnClose checks this flag and
+	// skips its HideOnClose-veto branch when set, so a Dock right-
+	// click → Quit (or any other session-end path) actually quits
+	// instead of getting hidden to tray.
+	SetQuitting();
+	evt.Skip();
+}
+
+void CamuleGuiApp::OnEndSession(wxCloseEvent& evt)
+{
+	// Run ShutDown if not already running (OnClose may already have triggered it).
+	if (!IsOnShutDown() && amuledlg) {
+		ShutDown(evt);
+	}
+	// wxWidgets may skip OnExit on this path, so explicitly run the exit
+	// cleanup to destroy downloadqueue → ~CPartFile → FlushBuffer → SavePartFile.
+	OnExit();
+	evt.Skip();
+}
+
+#ifdef __WXMAC__
+void CamuleGuiApp::MacReopenApp()
+{
+	// Fired when the user clicks the Dock icon and aMule has no
+	// visible top-level windows. Without this override, wxApp's
+	// default Reopen handler is a no-op when the frame is hidden,
+	// so a window hidden via the close button (HideOnClose pref =
+	// macOS-style "close hides instead of quits") stays permanently
+	// hidden — the only way to bring aMule back was to Cmd+Tab.
+	//
+	// Show + Iconize(false) + Raise covers all three hidden states:
+	// hidden via Show(false), iconized to the dock, or just behind
+	// other apps.
+	if (amuledlg) {
+		amuledlg->Show(true);
+		amuledlg->Iconize(false);
+		amuledlg->Raise();
+	}
+}
+#endif
+
+
 bool CamuleGuiApp::OnInit()
 {
 	amuledlg = NULL;
+
+	// Register the embedded-PNG art provider before CamuleApp::OnInit()
+	// touches anything UI-shaped. wxArtProvider::Push takes ownership
+	// of the pointer; wx tears the providers down at app exit.
+	wxArtProvider::Push(new CamuleArtProvider());
 
 	if ( !CamuleApp::OnInit() ) {
 		return false;
@@ -325,6 +381,15 @@ bool CamuleGuiApp::OnInit()
 		LSRegisterURL(ed2kHelperUrl, true);
 		CFRelease(ed2kHelperUrl);
 	}
+#endif
+
+#ifdef __WXGTK__
+	// AppImage first-run desktop integration prompt. CallAfter defers the
+	// dialog until the event loop is fully running, so the modal doesn't
+	// block OnInit's return path.
+	CallAfter([this] {
+		AppImageIntegration::PromptAndInstall(amuledlg);
+	});
 #endif
 
 	return true;

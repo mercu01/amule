@@ -24,6 +24,8 @@
 //
 
 #include <cstdlib>			// Needed for std::abort()
+#include <cstdio>			// Needed for popen/pclose/fgets in the addr2line fallback
+#include <cstring>			// Needed for strlen in the addr2line fallback
 
 #include "config.h"			// Needed for HAVE_CXXABI and HAVE_EXECINFO
 
@@ -128,35 +130,35 @@ public:
 
 	void OnStackFrame(const wxStackFrame& frame)
 	{
-		wxString btLine = CFormat(wxT("[%u] ")) % frame.GetLevel();
+		wxString btLine = CFormat("[%u] ") % frame.GetLevel();
 		wxString filename = frame.GetName();
 
 		if (!filename.IsEmpty()) {
-			btLine += filename + wxT(" (") +
+			btLine += filename + " (" +
 #if TOO_VERBOSE_BACKTRACE
 			        frame.GetModule()
 #else
-				frame.GetModule().AfterLast(wxT('/'))
+				frame.GetModule().AfterLast('/')
 #endif
-			        + wxT(")");
+			        + ")";
 		} else {
-			btLine += CFormat(wxT("%p")) % frame.GetAddress();
+			btLine += CFormat("%p") % frame.GetAddress();
 		}
 
 		if (frame.HasSourceLocation()) {
-			btLine += wxT(" at ") +
+			btLine += " at " +
 #if TOO_VERBOSE_BACKTRACE
 			        frame.GetFileName()
 #else
-				frame.GetFileName().AfterLast(wxT('/'))
+				frame.GetFileName().AfterLast('/')
 #endif
-			        + CFormat(wxT(":%u")) % frame.GetLine();
+			        + CFormat(":%u") % frame.GetLine();
 		} else {
-			btLine += wxT(" (Unknown file/line)");
+			btLine += " (Unknown file/line)";
 		}
 
 		//! Contains the entire backtrace
-		m_trace += btLine + wxT("\n");
+		m_trace += btLine + "\n";
 	}
 
 	wxString m_trace;
@@ -172,6 +174,40 @@ wxString get_backtrace(unsigned n)
 }
 
 #elif defined(__LINUX__)
+
+// Do_not_auto_remove -- needed for dl_iterate_phdr on PIE-base lookup
+#include <link.h> // IWYU pragma: keep
+
+// PIE relocation offset for the main executable -- subtracted from
+// runtime backtrace addresses before they're handed to either bfd or
+// addr2line, both of which expect link-time virtual addresses.  0 for
+// non-PIE binaries.  Populated lazily by init_pie_base() so both the
+// bfd path (via init_backtrace_info()) and the addr2line fallback
+// (via get_backtrace()) can rely on it.
+static intptr_t s_pie_base = 0;
+static bool s_pie_base_init = false;
+
+static int find_pie_base_cb(struct dl_phdr_info *info, size_t /*size*/, void *data)
+{
+	// The main executable is the first entry in dl_iterate_phdr's
+	// callback order and is identified by an empty dlpi_name (shared
+	// libraries have their path; the executable has "").  dlpi_addr
+	// is the relocation offset applied at load time: 0 for ET_EXEC
+	// (non-PIE), random for ET_DYN (PIE).  Capture it once.
+	if (info->dlpi_name == NULL || info->dlpi_name[0] == '\0') {
+		*reinterpret_cast<intptr_t*>(data) = static_cast<intptr_t>(info->dlpi_addr);
+		return 1; // stop iteration
+	}
+	return 0;
+}
+
+static void init_pie_base()
+{
+	if (!s_pie_base_init) {
+		dl_iterate_phdr(find_pie_base_cb, &s_pie_base);
+		s_pie_base_init = true;
+	}
+}
 
 #ifdef HAVE_BFD
 
@@ -250,6 +286,14 @@ void init_backtrace_info()
 	}
 
 	s_have_backtrace_symbols = (get_backtrace_symbols(s_abfd, &s_symbol_list) > 0);
+
+	// Same PIE-offset lookup the addr2line fallback uses; without
+	// translating backtrace() runtime PCs to link-time addresses,
+	// bfd's section-bounds check would reject every amule frame and
+	// every amule frame symbolicates to "??" on modern PIE-by-default
+	// distros.  init_pie_base() is idempotent; non-PIE binaries get
+	// s_pie_base = 0 so the eventual subtraction is a no-op.
+	init_pie_base();
 }
 
 
@@ -267,7 +311,15 @@ void get_file_line_info(bfd *abfd, asection *section, void* _address)
 
 	bfd_vma vma = section->vma;
 
-	unsigned long address = (unsigned long)_address;
+	// Translate runtime PC back to a link-time address so it lines up
+	// with bfd's section vmas.  s_pie_base captured by init_backtrace_info
+	// is the executable's PIE relocation offset; 0 on non-PIE so this is
+	// a no-op there.  Library frames (libc, libwx, ...) come through with
+	// runtime addresses far outside amule's link-time vma range; after
+	// the subtraction they're either negative-wrapped to huge unsigned
+	// values or still way outside, and the section-bounds check below
+	// continues to skip them as it did before.
+	unsigned long address = (unsigned long)_address - s_pie_base;
 	if (address < vma) {
 		return;
 	}
@@ -288,12 +340,12 @@ static wxString demangle(const wxString& function)
 #ifdef HAVE_CXXABI
 	wxString result;
 
-	if (function.Mid(0,2) == wxT("_Z")) {
+	if (function.Mid(0,2) == "_Z") {
 		int status;
 		char *demangled = abi::__cxa_demangle(function.mb_str(), NULL, NULL, &status);
 
 		if (!status) {
-			result = wxConvCurrent->cMB2WX(demangled);
+			result = wxConvLibc.cMB2WX(demangled);
 		}
 
 		if (demangled) {
@@ -303,7 +355,7 @@ static wxString demangle(const wxString& function)
 
 	return result;
 #else
-	return wxEmptyString;
+	return "";
 #endif
 }
 
@@ -319,12 +371,12 @@ wxString get_backtrace(unsigned n)
 
 	if ((num_entries = backtrace(bt_array, 100)) < 0) {
 		fprintf(stderr, "* Could not generate backtrace\n");
-		return wxEmptyString;
+		return "";
 	}
 
 	if ((bt_strings = backtrace_symbols(bt_array, num_entries)) == NULL) {
 		fprintf(stderr, "* Could not get symbol names for backtrace\n");
-		return wxEmptyString;
+		return "";
 	}
 
 	std::vector<wxString> libname(num_entries);
@@ -333,17 +385,17 @@ wxString get_backtrace(unsigned n)
 	wxString AllAddresses;
 
 	for (int i = 0; i < num_entries; ++i) {
-		wxString wxBtString = wxConvCurrent->cMB2WX(bt_strings[i]);
-		int posLPar = wxBtString.Find(wxT('('));
-		int posRPar = wxBtString.Find(wxT(')'));
-		int posLBra = wxBtString.Find(wxT('['));
-		int posRBra = wxBtString.Find(wxT(']'));
+		wxString wxBtString = wxConvLibc.cMB2WX(bt_strings[i]);
+		int posLPar = wxBtString.Find('(');
+		int posRPar = wxBtString.Find(')');
+		int posLBra = wxBtString.Find('[');
+		int posRBra = wxBtString.Find(']');
 		bool hasFunction = true;
 		if (posLPar == -1 || posRPar == -1) {
 			if (posLBra == -1 || posRBra == -1) {
 				/* It is important to have exactly num_entries
 				* addresses in AllAddresses */
-				AllAddresses += wxT("0x0000000 ");
+				AllAddresses += "0x0000000 ";
 				continue;
 			}
 			posLPar = posLBra;
@@ -354,7 +406,7 @@ wxString get_backtrace(unsigned n)
 		libname[i] = wxBtString.Mid(0, len);
 		/* Function name */
 		if (hasFunction) {
-			int posPlus = wxBtString.Find(wxT('+'), true);
+			int posPlus = wxBtString.Find('+', true);
 			if (posPlus == -1)
 				posPlus = posRPar;
 			len = posPlus - posLPar - 1;
@@ -366,11 +418,11 @@ wxString get_backtrace(unsigned n)
 		}
 		/* Address */
 		if ( posLBra == -1 || posRBra == -1) {
-			address[i] = wxT("0x0000000");
+			address[i] = "0x0000000";
 		} else {
 			len = posRBra - posLBra - 1;
 			address[i] = wxBtString.Mid(posLBra + 1, len);
-			AllAddresses += address[i] + wxT(" ");
+			AllAddresses += address[i] + " ";
 		}
 	}
 	free(bt_strings);
@@ -397,17 +449,17 @@ wxString get_backtrace(unsigned n)
 		bfd_map_over_sections(s_abfd, get_file_line_info, (void*)addr);
 
 		if (s_found) {
-			wxString function = wxConvCurrent->cMB2WX(s_function_name);
+			wxString function = wxConvLibc.cMB2WX(s_function_name);
 			wxString demangled = demangle(function);
 			if (!demangled.IsEmpty()) {
 				function = demangled;
 				funcname[i] = demangled;
 			}
-			out.Insert(wxConvCurrent->cMB2WX(s_function_name),i*2);
-			out.Insert(CFormat(wxT("%s:%u")) % wxString(wxConvCurrent->cMB2WX(s_file_name)) % s_line_number, i*2+1);
+			out.Insert(wxConvLibc.cMB2WX(s_function_name),i*2);
+			out.Insert(CFormat("%s:%u") % wxString(wxConvLibc.cMB2WX(s_file_name)) % s_line_number, i*2+1);
 		} else {
-			out.Insert(wxT("??"),i*2);
-			out.Insert(wxT("??"),i*2+1);
+			out.Insert("??",i*2);
+			out.Insert("??",i*2+1);
 		}
 	}
 
@@ -415,14 +467,54 @@ wxString get_backtrace(unsigned n)
 
 #else	/* !HAVE_BFD */
 	if (wxThread::IsMain()) {
+		// Translate runtime PCs to link-time addresses before handing
+		// them to addr2line, otherwise PIE binaries (the default on
+		// modern distros) return "??" for every amule frame -- the
+		// same PIE bug the bfd path had before #677, exposed here in
+		// the no-libbfd fallback.  init_pie_base() leaves s_pie_base
+		// at 0 for non-PIE binaries, so this loop is a no-op there.
+		init_pie_base();
+		wxString translatedAddresses;
+		for (int i = 0; i < num_entries; ++i) {
+			unsigned long addr = 0;
+			address[i].ToULong(&addr, 0);
+			translatedAddresses += CFormat("0x%lx ")
+				% static_cast<unsigned long>(addr - s_pie_base);
+		}
+
 		wxString command;
-		command << wxT("addr2line -C -f -s -e /proc/") <<
-		getpid() << wxT("/exe ") << AllAddresses;
+		command << "addr2line -C -f -s -e /proc/" <<
+		getpid() << "/exe " << translatedAddresses;
 		// The output of the command is this wxArrayString, in which
 		// the even elements are the function names, and the odd elements
 		// are the line numbers.
 
-		hasLineNumberInfo = wxExecute(command, out) != -1;
+		// Use popen() rather than wxExecute() here.  GUI wxExecute(cmd,
+		// out) on Linux waits for the child via wxGUIAppTraits::
+		// WaitForChild, which runs a nested wx event loop -- and that
+		// loop dispatches whatever is pending in the wx event queue.
+		// If the assert that brought us into get_backtrace() came from
+		// a periodic event handler (e.g. OnCoreTimer), the nested loop
+		// fires the same handler again, re-enters wxASSERT, and the
+		// second-level wx assert handler can't run amule's reentrantly
+		// so it falls through to wxTrap()'s int3 -> SIGTRAP.  popen()
+		// is a plain fork+waitpid pipeline with no wx involvement, so
+		// the reentrance path doesn't exist.
+		FILE* pipe = popen((const char*)command.mb_str(), "r");
+		if (pipe) {
+			char line[1024];
+			while (fgets(line, sizeof(line), pipe)) {
+				size_t len = std::strlen(line);
+				while (len > 0
+					&& (line[len-1] == '\n' || line[len-1] == '\r')) {
+					line[--len] = '\0';
+				}
+				out.Add(wxConvLibc.cMB2WX(line));
+			}
+			hasLineNumberInfo = (pclose(pipe) != -1);
+		} else {
+			hasLineNumberInfo = false;
+		}
 	}
 
 #endif	/* HAVE_BFD / !HAVE_BFD */
@@ -435,31 +527,31 @@ wxString get_backtrace(unsigned n)
 			if (hasLineNumberInfo) {
 				funcname[i] = out[2*i];
 			} else {
-				funcname[i] = wxT("??");
+				funcname[i] = "??";
 			}
 		}
 		wxString btLine;
-		btLine << wxT("[") << i << wxT("] ") << funcname[i] << wxT(" in ");
+		btLine << "[" << i << "] " << funcname[i] << " in ";
 		/* If addr2line did not find a line number, use bt_string */
-		if (!hasLineNumberInfo || out[2*i+1].Mid(0,2) == wxT("??")) {
-			btLine += libname[i] + wxT("[") + address[i] + wxT("]");
+		if (!hasLineNumberInfo || out[2*i+1].Mid(0,2) == "??") {
+			btLine += libname[i] + "[" + address[i] + "]";
 		} else if (hasLineNumberInfo) {
 #if TOO_VERBOSE_BACKTRACE
 			btLine += out[2*i+1];
 #else
-			btLine += out[2*i+1].AfterLast(wxT('/'));
+			btLine += out[2*i+1].AfterLast('/');
 #endif
 		} else {
 			btLine += libname[i];
 		}
 
-		trace += btLine + wxT("\n");
+		trace += btLine + "\n";
 	}
 
 	return trace;
 #else /* !HAVE_EXECINFO */
 	fprintf(stderr, "--== cannot generate backtrace ==--\n\n");
-	return wxEmptyString;
+	return "";
 #endif /* HAVE_EXECINFO */
 }
 
@@ -567,7 +659,7 @@ wxString get_backtrace(unsigned n)
 
 wxString get_backtrace(unsigned WXUNUSED(n))
 {
-	return wxT("--== no BACKTRACE for your platform ==--\n\n");
+	return "--== no BACKTRACE for your platform ==--\n\n";
 }
 
 #endif /* !__LINUX__ */

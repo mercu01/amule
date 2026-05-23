@@ -26,6 +26,8 @@
 #ifndef EMSOCKET_H
 #define EMSOCKET_H
 
+#include <mutex>
+
 #include "EncryptedStreamSocket.h"				// Needed for CEncryptedStreamSocket
 
 #include "ThrottledSocket.h"	// Needed for ThrottledFileSocket
@@ -52,8 +54,11 @@ public:
 	virtual void	SendPacket(CPacket* packet, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0);
 	bool	IsConnected() { return byConnected==ES_CONNECTED;};
 	uint8	GetConState()	{return byConnected;}
-	void	SetDownloadLimit(uint32 limit);
-	void	DisableDownloadLimit();
+	// Re-trigger OnReceive if this socket suspended its read loop last
+	// tick because CDownloadBandwidthThrottler's bucket was empty.
+	// Called once per tick from CPartFile::Process via
+	// CUpDownClient::TickDownloadAndMeasure.
+	void	WakeIfPaused();
 
 	virtual uint32	GetTimeOut() const;
 	virtual void	SetTimeOut(uint32 uTimeOut);
@@ -64,12 +69,23 @@ public:
     uint64	GetSentBytesPartFileSinceLastCallAndReset();
     uint64	GetSentBytesControlPacketSinceLastCallAndReset();
     uint64	GetSentPayloadSinceLastCallAndReset();
+    uint64	PeekSentPayload();   // Non-resetting peek — for disk I/O thread buffer check
     void	TruncateQueues();
 
     virtual SocketSentBytes SendControlData(uint32 maxNumberOfBytesToSend, uint32 minFragSize) { return Send(maxNumberOfBytesToSend, minFragSize, true); };
     virtual SocketSentBytes SendFileAndControlData(uint32 maxNumberOfBytesToSend, uint32 minFragSize) { return Send(maxNumberOfBytesToSend, minFragSize, false); };
 
     uint32	GetNeededBytes();
+    bool    HasSent() { return m_hasSent; }  // eMule ref: used by CUploadDiskIOThread to detect socket starvation
+    bool    HasQueues(bool bOnlyStandardPackets = false) const;
+    bool    IsBusyQuickCheck() const { return m_bBusy; }
+
+	// Whether OnReceive should gate reads through the global
+	// download bandwidth budget. Peer file-transfer sockets do;
+	// server-control sockets do not, since their traffic is tiny
+	// and latency-sensitive and would stall silently under a
+	// download cap tight enough to exhaust the throttler bucket.
+	virtual bool	IsDownloadThrottled() const { return true; }
 
 	//protected:
 	// these functions are public on our code because of the amuleDlg::socketHandler
@@ -91,11 +107,12 @@ private:
 	void	ClearQueues();
 
     uint32	GetNextFragSize(uint32 current, uint32 minFragSize);
-    bool    HasSent() { return m_hasSent; }
 
-	// Download (pseudo) rate control
-	uint32	downloadLimit;
-	bool	downloadLimitEnable;
+	// Download rate control: the global cap is enforced by
+	// CDownloadBandwidthThrottler. pendingOnReceive is the only
+	// per-socket bit -- set when OnReceive() suspended its read loop
+	// because the throttler's bucket was empty, cleared on the next
+	// successful read or when WakeIfPaused() retries the loop.
 	bool	pendingOnReceive;
 
 	// Download partial header
@@ -125,7 +142,7 @@ private:
 
     bool m_currentPacket_is_controlpacket;
 
-	wxMutex	m_sendLocker;
+	std::mutex	m_sendLocker;
 
 	uint64 m_numberOfSentBytesCompleteFile;
     uint64 m_numberOfSentBytesPartFile;

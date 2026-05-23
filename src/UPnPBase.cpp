@@ -33,6 +33,24 @@
 #define BROKEN_DEBIAN_LIBUPNP
 #endif
 
+/* Fix for broken UPNP_VERSION macro */
+#if UPNP_VERSION_MAJOR == 17
+
+#undef UPNP_VERSION_MAJOR
+#undef UPNP_VERSION_MINOR
+#undef UPNP_VERSION_PATCH
+#undef UPNP_VERSION
+
+#define UPNP_VERSION_MAJOR 1
+#define UPNP_VERSION_MINOR 14
+#define UPNP_VERSION_PATCH 18
+#define UPNP_VERSION (\
+	(UPNP_VERSION_MAJOR * 10000) + \
+	(UPNP_VERSION_MINOR * 100) + \
+	(UPNP_VERSION_PATCH))
+
+#endif /* UPNP_MAJOR_VERSION == 17 */
+
 #include "UPnPBase.h"
 
 #include <algorithm>		// For transform()
@@ -68,6 +86,19 @@ static bool stdStringIsEqualCI(const std::string &s1, const std::string &s2)
 	std::transform(ns1.begin(), ns1.end(), ns1.begin(), tolower);
 	std::transform(ns2.begin(), ns2.end(), ns2.begin(), tolower);
 	return ns1 == ns2;
+}
+
+
+static bool stdStringStartsWithCI(const std::string &s, const std::string &prefix)
+{
+	if (s.size() < prefix.size()) {
+		return false;
+	}
+	std::string head = s.substr(0, prefix.size());
+	std::string p = prefix;
+	std::transform(head.begin(), head.end(), head.begin(), tolower);
+	std::transform(p.begin(), p.end(), p.begin(), tolower);
+	return head == p;
 }
 
 
@@ -107,8 +138,46 @@ namespace Service {
 	static const std::string WAN_PPP_Connection("urn:schemas-upnp-org:service:WANPPPConnection:1");
 }
 
+// Decide whether an SSDP NT/ST is something amule actually wants to learn
+// about. The whitelist is the IGW family plus upnp:rootdevice (which is
+// opaque from SSDP alone -- the description.xml has to be fetched to
+// classify it). Anything else (media renderers, mesh APs, smart speakers,
+// ...) gets dropped before amule attempts to download description.xml,
+// which keeps the libupnp ThreadPool queue from filling on busy LANs and
+// stops spurious "Error retrieving device description" log lines for
+// devices we have no use for.
+static bool IsWANRelatedDeviceType(const std::string &type)
+{
+	if (type.empty()) {
+		// Malformed announcement; let the existing parser deal with it
+		// so we don't change behaviour for the pathological case.
+		return true;
+	}
+	if (stdStringIsEqualCI(type, ROOT_DEVICE)) {
+		return true;
+	}
+	// Versioned UPnP URNs: prefix-match so future :2/:3 revisions don't
+	// need code changes.
+	static const std::string prefixes[] = {
+		"urn:schemas-upnp-org:device:InternetGatewayDevice:",
+		"urn:schemas-upnp-org:device:WANDevice:",
+		"urn:schemas-upnp-org:device:WANConnectionDevice:",
+		"urn:schemas-upnp-org:device:LANDevice:",
+		"urn:schemas-upnp-org:service:Layer3Forwarding:",
+		"urn:schemas-upnp-org:service:WANCommonInterfaceConfig:",
+		"urn:schemas-upnp-org:service:WANIPConnection:",
+		"urn:schemas-upnp-org:service:WANPPPConnection:",
+	};
+	for (const std::string &prefix : prefixes) {
+		if (stdStringStartsWithCI(type, prefix)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static std::string ProcessErrorMessage(
-	const std::string &messsage,
+	const std::string &message,
 	int errorCode,
 	const DOMString errorString,
 	IXML_Document *doc)
@@ -119,7 +188,7 @@ static std::string ProcessErrorMessage(
 	}
 	if (errorCode > 0) {
 		msg << "Error: " <<
-			messsage <<
+			message <<
 			": Error code :'";
 		if (doc) {
 			CUPnPError e(doc);
@@ -136,7 +205,7 @@ static std::string ProcessErrorMessage(
 		AddDebugLogLineN(logUPnP, msg);
 	} else {
 		msg << "Error: " <<
-			messsage <<
+			message <<
 			": UPnP SDK error: " <<
 			UpnpGetErrorMessage(errorCode) <<
 			" (" << errorCode << ").";
@@ -518,7 +587,7 @@ m_SCPD(nullptr)
 			msg.str("");
 			msg << "WAN Service Detected: '" <<
 				m_serviceType << "'.";
-			AddDebugLogLineC(logUPnP, msg);
+			AddDebugLogLineN(logUPnP, msg);
 			// Subscribe
 			const_cast<CUPnPControlPoint &>(upnpControlPoint).Subscribe(*this);
 #if 0
@@ -535,7 +604,7 @@ m_SCPD(nullptr)
 		msg.str("");
 		msg << "Uninteresting service detected: '" <<
 			m_serviceType << "'. Ignoring.";
-		AddDebugLogLineC(logUPnP, msg);
+		AddDebugLogLineN(logUPnP, msg);
 	}
 }
 
@@ -1124,7 +1193,13 @@ bool CUPnPControlPoint::PrivateDeletePortMapping(
 
 
 // This function is static
-#if UPNP_VERSION >= 10800
+#if UPNP_VERSION >= 11800
+int CUPnPControlPoint::Callback(Upnp_EventType_e EventType, void *Event, void * /*Cookie*/)
+#elif UPNP_VERSION >= 11430
+int CUPnPControlPoint::Callback(Upnp_EventType_e EventType, const void *Event, void * /*Cookie*/)
+#elif UPNP_VERSION >= 11426
+int CUPnPControlPoint::Callback(Upnp_EventType_e EventType, void *Event, void * /*Cookie*/)
+#elif UPNP_VERSION >= 10800
 int CUPnPControlPoint::Callback(Upnp_EventType_e EventType, const void *Event, void * /*Cookie*/)
 #else
 int CUPnPControlPoint::Callback(Upnp_EventType EventType, void *Event, void * /*Cookie*/)
@@ -1139,11 +1214,30 @@ int CUPnPControlPoint::Callback(Upnp_EventType EventType, void *Event, void * /*
 
 	//fprintf(stderr, "Callback: %d, Cookie: %p\n", EventType, Cookie);
 	switch (EventType) {
-	case UPNP_DISCOVERY_ADVERTISEMENT_ALIVE:
+	case UPNP_DISCOVERY_ADVERTISEMENT_ALIVE: {
+		// Drop unsolicited NOTIFY announcements whose NT isn't a device
+		// or service we care about. Without this filter amule fetches
+		// description.xml from every UPnP speaker, media renderer, mesh
+		// AP, etc. on the LAN -- which both burns libupnp's ThreadPool
+		// budget and produces "Error retrieving device description" log
+		// noise for devices whose endpoints amule has no business poking.
+#if UPNP_VERSION >= 10800
+		UpnpDiscovery *d_filter_event = (UpnpDiscovery *)Event;
+		const char *deviceType =
+			UpnpDiscovery_get_DeviceType_cstr(d_filter_event);
+#else
+		struct Upnp_Discovery *d_filter_event =
+			(struct Upnp_Discovery *)Event;
+		const char *deviceType = d_filter_event->DeviceType;
+#endif
+		if (!UPnP::IsWANRelatedDeviceType(deviceType ? deviceType : "")) {
+			break;
+		}
 		//fprintf(stderr, "Callback: UPNP_DISCOVERY_ADVERTISEMENT_ALIVE\n");
 		msg << "error(UPNP_DISCOVERY_ADVERTISEMENT_ALIVE): ";
 		msg2<< "UPNP_DISCOVERY_ADVERTISEMENT_ALIVE: ";
 		goto upnpDiscovery;
+	}
 	case UPNP_DISCOVERY_SEARCH_RESULT: {
 		//fprintf(stderr, "Callback: UPNP_DISCOVERY_SEARCH_RESULT\n");
 		msg << "error(UPNP_DISCOVERY_SEARCH_RESULT): ";
@@ -1161,36 +1255,46 @@ upnpDiscovery:
 		if (errCode != UPNP_E_SUCCESS) {
 			msg << UpnpGetErrorMessage(errCode) << ".";
 #else
-		int ret;
 		if (d_event->ErrCode != UPNP_E_SUCCESS) {
 			msg << UpnpGetErrorMessage(d_event->ErrCode) << ".";
 #endif
-			AddDebugLogLineC(logUPnP, msg);
+			AddDebugLogLineN(logUPnP, msg);
 		}
 		// Get the XML tree device description in doc
 #if UPNP_VERSION >= 10800
 		const char *location = UpnpDiscovery_get_Location_cstr(d_event);
+#else
+		const char *location = d_event->Location;
+#endif
+		// Passive ALIVE announcements arrive in dense bursts (one per
+		// service class, every few seconds per device). When the
+		// announcing device's HTTP server is unreachable each fetch
+		// blocks a libupnp worker thread for the full TCP-connect
+		// timeout. Suppress repeat fetches against a recently-failed
+		// URL on ALIVE only -- SEARCH_RESULT is an active poll
+		// initiated by us and bypasses the cache.
+		if (EventType == UPNP_DISCOVERY_ADVERTISEMENT_ALIVE &&
+		    upnpCP->ShouldSkipAdvertisementFetch(location ? location : "")) {
+			break;
+		}
 		int ret = UpnpDownloadXmlDoc(location, &doc);
-#else
-		ret = UpnpDownloadXmlDoc(d_event->Location, &doc);
-#endif
 		if (ret != UPNP_E_SUCCESS) {
+			if (EventType == UPNP_DISCOVERY_ADVERTISEMENT_ALIVE) {
+				upnpCP->RecordAdvertisementFetchResult(
+					location ? location : "", false);
+			}
 			msg << "Error retrieving device description from " <<
-#if UPNP_VERSION >= 10800
-				location << ": " <<
-#else
-				d_event->Location << ": " <<
-#endif
+				(location ? location : "") << ": " <<
 				UpnpGetErrorMessage(ret) <<
 				"(" << ret << ").";
-			AddDebugLogLineC(logUPnP, msg);
+			AddDebugLogLineN(logUPnP, msg);
 		} else {
+			if (EventType == UPNP_DISCOVERY_ADVERTISEMENT_ALIVE) {
+				upnpCP->RecordAdvertisementFetchResult(
+					location ? location : "", true);
+			}
 			msg2 << "Retrieving device description from " <<
-#if UPNP_VERSION >= 10800
-				location << ".";
-#else
-				d_event->Location << ".";
-#endif
+				(location ? location : "") << ".";
 			AddDebugLogLineN(logUPnP, msg2);
 		}
 		if (doc) {
@@ -1261,7 +1365,7 @@ upnpDiscovery:
 				UpnpGetErrorMessage(dab_event->ErrCode) <<
 #endif
 				".";
-			AddDebugLogLineC(logUPnP, msg);
+			AddDebugLogLineN(logUPnP, msg);
 		}
 #if UPNP_VERSION >= 10800
 		std::string devType = UpnpDiscovery_get_DeviceType_cstr(dab_event);
@@ -1285,7 +1389,7 @@ upnpDiscovery:
 	}
 	case UPNP_EVENT_RECEIVED: {
 		//fprintf(stderr, "Callback: UPNP_EVENT_RECEIVED\n");
-		// Event reveived
+		// Event received
 #if UPNP_VERSION >= 10800
 		UpnpEvent *e_event = (UpnpEvent *)Event;
 		int eventKey = UpnpEvent_get_EventKey(e_event);
@@ -1422,7 +1526,7 @@ upnpEventSubscriptionExpired:
 			} else {
 				msg << "Error: did not find service " <<
 					newSID << " in the service map.";
-				AddDebugLogLineC(logUPnP, msg);
+				AddDebugLogLineN(logUPnP, msg);
 			}
 		}
 		break;
@@ -1525,7 +1629,7 @@ eventSubscriptionRequest:
 		AddDebugLogLineC(logUPnP, msg);
 		break;
 	default:
-		// Humm, this is not good, we forgot to handle something...
+		// Hum, this is not good, we forgot to handle something...
 		fprintf(stderr,
 			"Callback: default... Unknown event:'%d', not good.\n",
 			EventType);
@@ -1617,6 +1721,37 @@ void CUPnPControlPoint::RemoveRootDevice(const char *udn)
 }
 
 
+bool CUPnPControlPoint::ShouldSkipAdvertisementFetch(
+	const std::string &location)
+{
+	CUPnPMutexLocker lock(m_failedFetchCacheMutex);
+	std::map<std::string, time_t>::iterator it =
+		m_failedFetchCache.find(location);
+	if (it == m_failedFetchCache.end()) {
+		return false;
+	}
+	if (time(NULL) - it->second >= FAILED_FETCH_TTL_SECS) {
+		// TTL expired -- erase and allow one retry, which will refresh
+		// the entry on failure or clear it on success.
+		m_failedFetchCache.erase(it);
+		return false;
+	}
+	return true;
+}
+
+
+void CUPnPControlPoint::RecordAdvertisementFetchResult(
+	const std::string &location, bool success)
+{
+	CUPnPMutexLocker lock(m_failedFetchCacheMutex);
+	if (success) {
+		m_failedFetchCache.erase(location);
+	} else {
+		m_failedFetchCache[location] = time(NULL);
+	}
+}
+
+
 void CUPnPControlPoint::Subscribe(CUPnPService &service)
 {
 	std::ostringstream msg;
@@ -1634,7 +1769,7 @@ void CUPnPControlPoint::Subscribe(CUPnPService &service)
 		msg << "Successfully retrieved SCPD Document for service " <<
 			service.GetServiceType() << ", absEventSubURL: " <<
 			service.GetAbsEventSubURL() << ".";
-		AddDebugLogLineC(logUPnP, msg);
+		AddDebugLogLineN(logUPnP, msg);
 		msg.str("");
 
 		// Now try to subscribe to this service. If the subscription
@@ -1659,14 +1794,14 @@ void CUPnPControlPoint::Subscribe(CUPnPService &service)
 	} else {
 		msg << "Error getting SCPD Document from " <<
 			service.GetAbsSCPDURL() << ".";
-		AddDebugLogLineC(logUPnP, msg);
+		AddDebugLogLineN(logUPnP, msg);
 	}
 
 	return;
 
 	// Error processing
 error:
-	AddDebugLogLineC(logUPnP, msg);
+	AddDebugLogLineN(logUPnP, msg);
 }
 
 

@@ -156,7 +156,7 @@ public:
 protected:
 	// The columns with their attributes; MUST be defined by the derived class.
 	GenericColumnInfo m_columndata;
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, wxIntPtr sortData);
 
 private:
 	/**
@@ -196,7 +196,7 @@ private:
 	 * @see CMuleListCtrl::GetTTSText
 	 * Just a dummy
 	 */
-	virtual wxString GetTTSText(unsigned) const { return wxEmptyString; }
+	virtual wxString GetTTSText(unsigned) const { return ""; }
 
 	/**
 	 * Set "show sources" or "show peers" flag in Known File
@@ -239,9 +239,9 @@ private:
 	//! Pointer to the current menu object, used to avoid multiple menus.
 	wxMenu*		m_menu;
 	//! Cached brush object.
-	wxBrush	m_hilightBrush;
+	wxBrush	m_highlightBrush;
 	//! Cached brush object.
-	wxBrush	m_hilightUnfocusBrush;
+	wxBrush	m_highlightUnfocusBrush;
 
 	//! The number of displayed sources
 	int m_clientcount;
@@ -249,7 +249,7 @@ private:
 	//! The files being shown, if any.
 	CKnownFileVector m_knownfiles;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 
 	bool m_showing;
 

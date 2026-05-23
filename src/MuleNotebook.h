@@ -29,26 +29,15 @@
 #include <wx/notebook.h>
 
 
-DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING, -1)
-DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED, -1)
+wxDECLARE_EVENT(wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING, wxEvent);
+wxDECLARE_EVENT(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED, wxEvent);
 
-
-#define EVT_MULENOTEBOOK_PAGE_CLOSING(id, fn)						\
-	DECLARE_EVENT_TABLE_ENTRY(							\
-		wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING,					\
-		id,									\
-		-1,									\
-		(wxObjectEventFunction)(wxEventFunction)(wxNotebookEventFunction) &fn,  \
-		NULL                                                                    \
-	),
-#define EVT_MULENOTEBOOK_ALL_PAGES_CLOSED(id, fn)					\
-	DECLARE_EVENT_TABLE_ENTRY(							\
-		wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED,				\
-		id,									\
-		-1,									\
-		(wxObjectEventFunction)(wxEventFunction)(wxNotebookEventFunction) &fn,  \
-		NULL                                                                    \
-	),
+#define EVT_MULENOTEBOOK_PAGE_CLOSING(id, fn) \
+	wx__DECLARE_EVT1(wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING, id, \
+		wxEVENT_HANDLER_CAST(wxNotebookEventFunction, fn))
+#define EVT_MULENOTEBOOK_ALL_PAGES_CLOSED(id, fn) \
+	wx__DECLARE_EVT1(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED, id, \
+		wxEVENT_HANDLER_CAST(wxNotebookEventFunction, fn))
 
 
 class wxWindow;
@@ -69,7 +58,7 @@ public:
 	 *
 	 * @see wxNotebook::wxNotebook
 	 */
-	CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxT("notebook") );
+	CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = "notebook" );
 
 	/**
 	 * Destructor.
@@ -145,7 +134,7 @@ protected:
 	//! The pointer to the widget which would receive right-click events or NULL.
 	wxWindow*	m_popup_widget;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 #ifdef __WINDOWS__

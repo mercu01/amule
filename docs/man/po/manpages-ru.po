@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: manpages-ru\n"
-"POT-Creation-Date: 2016-09-15 11:10+0200\n"
+"POT-Creation-Date: 2026-05-11 13:24+0200\n"
 "PO-Revision-Date: 2017-05-24 10:02+0200\n"
 "Last-Translator: Sebastiano Pistore <SebastianoPistore.info@protonmail.ch>\n"
 "Language-Team: Russian <LL@li.org>\n"
@@ -14,8 +14,8 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 "X-Poedit-SourceCharset: utf-8\n"
 "X-Generator: Poedit 2.0.2\n"
 
@@ -29,7 +29,7 @@ msgstr "AMULE"
 #: amule.1:1 amulecmd.1:1 amuled.1:1 amulegui.1:1 amuleweb.1:1 ed2k.1:1
 #: ../../src/utils/aLinkCreator/docs/alc.1:1
 #: ../../src/utils/aLinkCreator/docs/alcc.1:1 ../../src/utils/cas/docs/cas.1:1
-#: ../../src/utils/wxCas/docs/wxcas.1:1 ../../src/utils/xas/docs/xas.1:1
+#: ../../src/utils/wxCas/docs/wxcas.1:1
 #, no-wrap
 msgid "September 2016"
 msgstr "сентябрь 2016"
@@ -47,10 +47,10 @@ msgid "aMule"
 msgstr "aMule"
 
 #. type: SH
-#: amule.1:4 amulecmd.1:5 amuled.1:4 amuleweb.1:4 ed2k.1:4
+#: amule.1:4 amulecmd.1:5 amuled.1:4 amulegui.1:4 amuleweb.1:4 ed2k.1:4
 #: ../../src/utils/aLinkCreator/docs/alc.1:3
 #: ../../src/utils/aLinkCreator/docs/alcc.1:4 ../../src/utils/cas/docs/cas.1:4
-#: ../../src/utils/wxCas/docs/wxcas.1:3 ../../src/utils/xas/docs/xas.1:3
+#: ../../src/utils/wxCas/docs/wxcas.1:3
 #, no-wrap
 msgid "NAME"
 msgstr "ИМЯ"
@@ -64,7 +64,7 @@ msgstr "amule - мультиплатформенный p2p клиент eMule"
 #: amule.1:6 amulecmd.1:7 amuled.1:6 amulegui.1:6 amuleweb.1:6 ed2k.1:6
 #: ../../src/utils/aLinkCreator/docs/alc.1:5
 #: ../../src/utils/aLinkCreator/docs/alcc.1:6 ../../src/utils/cas/docs/cas.1:6
-#: ../../src/utils/wxCas/docs/wxcas.1:5 ../../src/utils/xas/docs/xas.1:5
+#: ../../src/utils/wxCas/docs/wxcas.1:5
 #, no-wrap
 msgid "SYNOPSIS"
 msgstr "ОБЗОР"
@@ -89,7 +89,6 @@ msgstr "[B<-t> I<E<lt>номерE<gt>>] [I<eD2k-ссылка>]"
 #: ../../src/utils/aLinkCreator/docs/alc.1:7
 #: ../../src/utils/aLinkCreator/docs/alcc.1:14
 #: ../../src/utils/cas/docs/cas.1:14 ../../src/utils/wxCas/docs/wxcas.1:7
-#: ../../src/utils/xas/docs/xas.1:7
 #, no-wrap
 msgid "DESCRIPTION"
 msgstr "ОПИСАНИЕ"
@@ -119,8 +118,8 @@ msgstr "B<[ -geometry >I<E<lt>геометрияE<gt>> B<]>"
 #: amule.1:31 amulegui.1:30
 msgid ""
 "Sets the geometry of the app. I<E<lt>geomE<gt>> uses the same format as "
-"standard X11 apps:\t[B<=>][I<E<lt>widthE<gt>>{B<xX>}I<E<lt>heightE<gt>>][{B<"
-"+->}I<E<lt>xoffsetE<gt>>{B<+->}I<E<lt>yoffsetE<gt>>]"
+"standard X11 apps:\t[B<=>][I<E<lt>widthE<gt>>{B<xX>}I<E<lt>heightE<gt>>]"
+"[{B<+->}I<E<lt>xoffsetE<gt>>{B<+->}I<E<lt>yoffsetE<gt>>]"
 msgstr ""
 "Указать геометрию окна. I<E<lt>ГеометрияE<gt>> использует стандартный формат "
 "X11:\t[B<=>][I<E<lt>ширинаE<gt>>{B<xX>}I<E<lt>высотаE<gt>>][{B<+->}"
@@ -148,69 +147,72 @@ msgid "Specify location of amuleweb binary to I<E<lt>pathE<gt>>."
 msgstr "Указать I<E<lt>путьE<gt>> к исполняемому файлу amuleweb."
 
 #. type: Plain text
-#: amule.1:43 amuled.1:51
-msgid "Does not handle fatal exception."
-msgstr "Не обрабатывать фатальные исключительные ситуации."
+#: amule.1:45 amuled.1:53
+msgid ""
+"Don't catch fatal exceptions and don't block exit on assertions.  Useful for "
+"headless / supervised setups (systemd, watchdog scripts)  where the "
+"otherwise-modal assertion dialog prevents auto-restart."
+msgstr ""
 
 #. type: Plain text
-#: amule.1:46 amuled.1:54
+#: amule.1:48 amuled.1:56
 msgid "Does not disable stdin."
 msgstr "Не отключать стандартный ввод."
 
 #. type: TP
-#: amule.1:46 amuled.1:54 amulegui.1:39 ed2k.1:24
+#: amule.1:48 amuled.1:56 amulegui.1:39 ed2k.1:24
 #, no-wrap
 msgid "B<[ -t>, B<--category>=I<E<lt>numE<gt>> B<]>"
 msgstr "B<[ -t>, B<--category>=I<E<lt>номерE<gt>> B<]>"
 
 #. type: Plain text
-#: amule.1:49 amuled.1:57 amulegui.1:42 ed2k.1:27
+#: amule.1:51 amuled.1:59 amulegui.1:42 ed2k.1:27
 msgid "Set category for passed eD2k links to I<E<lt>numE<gt>>"
 msgstr "Указать I<E<lt>номерE<gt>> категории для eD2k ссылок"
 
 #. type: Plain text
-#: amule.1:52 amulecmd.1:66 amuled.1:60 amulegui.1:48 amuleweb.1:126 ed2k.1:39
+#: amule.1:54 amulecmd.1:66 amuled.1:62 amulegui.1:48 amuleweb.1:126 ed2k.1:39
 msgid "Displays the current version number."
 msgstr "Выводит информацию о версии."
 
 #. type: Plain text
-#: amule.1:55 amulecmd.1:69 amuled.1:63 amulegui.1:45 amuleweb.1:123 ed2k.1:36
+#: amule.1:57 amulecmd.1:69 amuled.1:65 amulegui.1:45 amuleweb.1:123 ed2k.1:36
 #: ../../src/utils/aLinkCreator/docs/alcc.1:22
 #: ../../src/utils/cas/docs/cas.1:32
 msgid "Prints a short usage description."
 msgstr "Выводит короткую помощь по использованию."
 
 #. type: TP
-#: amule.1:55 amuled.1:63 ed2k.1:39
+#: amule.1:57 amuled.1:65 ed2k.1:39
 #, no-wrap
 msgid "B<[ eD2k-link ]>"
 msgstr "B<[ eD2k-ссылка ]>"
 
 #. type: Plain text
-#: amule.1:58 amuled.1:66 ed2k.1:42
+#: amule.1:60 amuled.1:68 ed2k.1:42
 msgid "Adds an eD2k-link to the core."
 msgstr "Передает eD2k-ссылку в ядро."
 
 #. type: Plain text
-#: amule.1:60 amulecmd.1:75 amuled.1:68 ed2k.1:44
+#: amule.1:62 amulecmd.1:75 amuled.1:70 ed2k.1:44
 msgid "The eD2k link to be added can be:"
 msgstr "Добавляемая eD2k-ссылка может быть:"
 
 #. type: Plain text
-#: amule.1:63 amulecmd.1:78 amuled.1:71 ed2k.1:47
+#: amule.1:65 amulecmd.1:78 amuled.1:73 ed2k.1:47
 msgid "a file link (ed2k://|file|...), it will be added to the download queue;"
 msgstr ""
 "файловая ссылка (ed2k://|file|...), она будет добавлена в очередь закачки;"
 
 #. type: Plain text
-#: amule.1:65 amulecmd.1:80 amuled.1:73 ed2k.1:49
+#: amule.1:67 amulecmd.1:80 amuled.1:75 ed2k.1:49
 msgid ""
 "a server link (ed2k://|server|...), it will be added to the server list;"
 msgstr ""
 "серверная ссылка (ed2k://|server|...), она будет добавлена в список серверов;"
 
 #. type: Plain text
-#: amule.1:67 amuled.1:75 ed2k.1:51
+#: amule.1:69 amuled.1:77 ed2k.1:51
 msgid ""
 "a serverlist link, in which case all servers in the list will be added to "
 "the server list;"
@@ -219,24 +221,24 @@ msgstr ""
 "список серверов;"
 
 #. type: Plain text
-#: amule.1:69 amuled.1:77
+#: amule.1:71 amuled.1:79
 msgid "a magnet link."
 msgstr "magnet-ссылка."
 
 #. type: SH
-#: amule.1:70 amulecmd.1:207 amuleweb.1:132
+#: amule.1:72 amulecmd.1:229 amuleweb.1:132
 #, no-wrap
 msgid "NOTES"
 msgstr "ЗАМЕЧАНИЯ"
 
 #. type: SS
-#: amule.1:71 amulecmd.1:208 amuleweb.1:133
+#: amule.1:73 amulecmd.1:230 amuleweb.1:133
 #, no-wrap
 msgid "Paths"
 msgstr "Пути"
 
 #. type: Plain text
-#: amule.1:75 amulecmd.1:212 amuleweb.1:137
+#: amule.1:77 amulecmd.1:234 amuleweb.1:137
 msgid ""
 "For all options which take a I<E<lt>pathE<gt>> value, if the I<path> "
 "contains no directory part (i.e. just a plain filename), then it is "
@@ -247,59 +249,56 @@ msgstr ""
 "файл находится в каталоге конфигурации, I<~/.aMule>."
 
 #. type: SH
-#: amule.1:75 amulecmd.1:240 amuled.1:78 amuleweb.1:171 ed2k.1:60
+#: amule.1:77 amulecmd.1:262 amuled.1:80 amuleweb.1:171 ed2k.1:60
 #: ../../src/utils/cas/docs/cas.1:36
 #, no-wrap
 msgid "FILES"
 msgstr "ФАЙЛЫ"
 
 #. type: Plain text
-#: amule.1:77 amuled.1:80
+#: amule.1:79 amuled.1:82
 msgid "~/.aMule/*"
 msgstr "~/.aMule/*"
 
 #. type: SH
-#: amule.1:77 amulecmd.1:256 amuled.1:80 amulegui.1:48 amuleweb.1:191 ed2k.1:62
+#: amule.1:79 amulecmd.1:278 amuled.1:82 amulegui.1:48 amuleweb.1:191 ed2k.1:62
 #: ../../src/utils/aLinkCreator/docs/alc.1:11
 #: ../../src/utils/aLinkCreator/docs/alcc.1:26
 #: ../../src/utils/cas/docs/cas.1:42 ../../src/utils/wxCas/docs/wxcas.1:16
-#: ../../src/utils/xas/docs/xas.1:16
 #, no-wrap
 msgid "REPORTING BUGS"
 msgstr "СООБЩЕНИЕ ОБ ОШИБКАХ"
 
 #. type: Plain text
-#: amule.1:80 amulecmd.1:259 amuled.1:83 amulegui.1:51 amuleweb.1:194 ed2k.1:65
+#: amule.1:82 amulecmd.1:281 amuled.1:85 amulegui.1:51 amuleweb.1:194 ed2k.1:65
 #: ../../src/utils/aLinkCreator/docs/alc.1:14
 #: ../../src/utils/aLinkCreator/docs/alcc.1:29
 #: ../../src/utils/cas/docs/cas.1:45 ../../src/utils/wxCas/docs/wxcas.1:19
-#: ../../src/utils/xas/docs/xas.1:19
 msgid ""
-"Please report bugs either on our forum (I<http://forum.amule.org/>), or in "
-"our bugtracker (I<http://bugs.amule.org/>).  Please do not report bugs in e-"
-"mail, neither to our mailing list nor directly to any team member."
+"Please report bugs either on our forum (I<https://github.com/amule-org/amule/"
+"discussions>), or in our bugtracker (I<https://github.com/amule-org/amule/"
+"issues>).  Please do not report bugs in e-mail, neither to our mailing list "
+"nor directly to any team member."
 msgstr ""
-"Пожалуйста, сообщайте об ошибках либо на нашем форуме (I<http://forum.amule."
-"org/>), либо в багтрекере (I<http://bugs.amule.org/>). Пожалуйста, не "
-"сообщайте об ошбках по электронной почте, по нашим спискам рассылки, или "
-"напрямую участникам."
+"Пожалуйста, сообщайте об ошибках либо на нашем форуме (I<https://github.com/"
+"amule-org/amule/discussions>), либо в багтрекере (I<https://github.com/amule-"
+"org/amule/issues>). Пожалуйста, не сообщайте об ошбках по электронной почте, "
+"по нашим спискам рассылки, или напрямую участникам."
 
 #. type: SH
-#: amule.1:80 amulecmd.1:259 amuled.1:83 amulegui.1:51 amuleweb.1:194 ed2k.1:65
+#: amule.1:82 amulecmd.1:281 amuled.1:85 amulegui.1:51 amuleweb.1:194 ed2k.1:65
 #: ../../src/utils/aLinkCreator/docs/alc.1:14
 #: ../../src/utils/aLinkCreator/docs/alcc.1:29
 #: ../../src/utils/cas/docs/cas.1:45 ../../src/utils/wxCas/docs/wxcas.1:19
-#: ../../src/utils/xas/docs/xas.1:19
 #, no-wrap
 msgid "COPYRIGHT"
 msgstr "АВТОРСКИЕ ПРАВА"
 
 #. type: Plain text
-#: amule.1:82 amulecmd.1:261 amuled.1:85 amulegui.1:53 amuleweb.1:196 ed2k.1:67
+#: amule.1:84 amulecmd.1:283 amuled.1:87 amulegui.1:53 amuleweb.1:196 ed2k.1:67
 #: ../../src/utils/aLinkCreator/docs/alc.1:16
 #: ../../src/utils/aLinkCreator/docs/alcc.1:31
 #: ../../src/utils/cas/docs/cas.1:47 ../../src/utils/wxCas/docs/wxcas.1:21
-#: ../../src/utils/xas/docs/xas.1:21
 msgid ""
 "aMule and all of its related utilities are distributed under the GNU General "
 "Public License."
@@ -308,31 +307,28 @@ msgstr ""
 "Лицензионным Соглашением GNU (GNU GPL)."
 
 #. type: SH
-#: amule.1:82 amulecmd.1:261 amuled.1:85 amulegui.1:53 amuleweb.1:196 ed2k.1:67
+#: amule.1:84 amulecmd.1:283 amuled.1:87 amulegui.1:53 amuleweb.1:196 ed2k.1:67
 #: ../../src/utils/aLinkCreator/docs/alc.1:16
 #: ../../src/utils/aLinkCreator/docs/alcc.1:31
 #: ../../src/utils/cas/docs/cas.1:47 ../../src/utils/wxCas/docs/wxcas.1:21
-#: ../../src/utils/xas/docs/xas.1:21
 #, no-wrap
 msgid "SEE ALSO"
 msgstr "СМ. ТАКЖЕ"
 
 #. type: SH
-#: amule.1:84 amulecmd.1:263 amuled.1:87 amulegui.1:55 amuleweb.1:198 ed2k.1:69
+#: amule.1:86 amulecmd.1:285 amuled.1:89 amulegui.1:55 amuleweb.1:198 ed2k.1:69
 #: ../../src/utils/aLinkCreator/docs/alc.1:18
 #: ../../src/utils/aLinkCreator/docs/alcc.1:33
 #: ../../src/utils/cas/docs/cas.1:49 ../../src/utils/wxCas/docs/wxcas.1:23
-#: ../../src/utils/xas/docs/xas.1:23
 #, no-wrap
 msgid "AUTHOR"
 msgstr "АВТОРЫ"
 
 #. type: Plain text
-#: amule.1:85 amulecmd.1:264 amuled.1:88 amuleweb.1:199 ed2k.1:70
+#: amule.1:87 amulecmd.1:286 amuled.1:90 amuleweb.1:199 ed2k.1:70
 #: ../../src/utils/aLinkCreator/docs/alc.1:19
 #: ../../src/utils/aLinkCreator/docs/alcc.1:34
 #: ../../src/utils/cas/docs/cas.1:50 ../../src/utils/wxCas/docs/wxcas.1:24
-#: ../../src/utils/xas/docs/xas.1:24
 msgid ""
 "This manpage was written by Vollstrecker E<lt>amule@vollstreckernet.deE<gt>"
 msgstr ""
@@ -354,7 +350,7 @@ msgstr "aMuleCmd v2.3.2"
 #. type: TH
 #: amulecmd.1:1 amuleweb.1:1 ed2k.1:1 ../../src/utils/aLinkCreator/docs/alc.1:1
 #: ../../src/utils/aLinkCreator/docs/alcc.1:1 ../../src/utils/cas/docs/cas.1:1
-#: ../../src/utils/wxCas/docs/wxcas.1:1 ../../src/utils/xas/docs/xas.1:1
+#: ../../src/utils/wxCas/docs/wxcas.1:1
 #, no-wrap
 msgid "aMule utilities"
 msgstr "утилиты aMule"
@@ -445,8 +441,8 @@ msgid ""
 "Use the given configuration file.  Default configuration file is I<~/.aMule/"
 "remote.conf>"
 msgstr ""
-"Использовать указанный файл конфигурации. По умолчанию используется I<~/."
-"aMule/remote.conf>"
+"Использовать указанный файл конфигурации. По умолчанию используется "
+"I<~/.aMule/remote.conf>"
 
 #. type: Plain text
 #: amulecmd.1:46 amuleweb.1:63
@@ -519,12 +515,6 @@ msgstr "КОМАНДЫ"
 msgid "All commands are case insensitive."
 msgstr "Все команды чувствительны к регистру."
 
-#. type: SS
-#: amulecmd.1:71
-#, no-wrap
-msgid "Add I<E<lt>eD2k-linkE<gt>> | I<E<lt>magnet-linkE<gt>>"
-msgstr "Add I<E<lt>eD2k-ссылкаE<gt>> | I<E<lt>magnet-ссылкаE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:73
 msgid "Adds an eD2k-link or a magnet-link to the core."
@@ -544,12 +534,6 @@ msgstr ""
 msgid "The magnet link must contain the eD2k hash and file length."
 msgstr "Magnet-ссылка должна содержать eD2k-хэш и размер файла."
 
-#. type: SS
-#: amulecmd.1:85
-#, no-wrap
-msgid "Cancel I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
-msgstr "Cancel I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:87
 msgid ""
@@ -558,12 +542,6 @@ msgid ""
 msgstr ""
 "Отменяет закачку указанную по I<E<lt>хэшуE<gt>> или I<E<lt>номеруE<gt>>. "
 "Чтобы определить значения, воспользуйтесь командой B<show>."
-
-#. type: SS
-#: amulecmd.1:87
-#, no-wrap
-msgid "Connect [ I<kad> | I<ed2k> | I<E<lt>ip|nameE<gt>> ]"
-msgstr "Connect [ I<kad> | I<ed2k> | I<E<lt>ip|имяE<gt>> ]"
 
 #. type: Plain text
 #: amulecmd.1:89
@@ -595,12 +573,6 @@ msgid ""
 "the specified network."
 msgstr "Отсоединяет от всех сетей, или только от указанной сети."
 
-#. type: SS
-#: amulecmd.1:98
-#, no-wrap
-msgid "Download I<E<lt>numberE<gt>>"
-msgstr "Download I<E<lt>номерE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:100
 msgid "Start downloading a file."
@@ -622,19 +594,13 @@ msgstr ""
 msgid "Disconnect from amule/amuled and quit amulecmd."
 msgstr "Отключится от amule/amuled и выйти из amulecmd."
 
-#. type: SS
-#: amulecmd.1:106
-#, no-wrap
-msgid "Get I<E<lt>whatE<gt>>"
-msgstr "Get I<E<lt>параметрE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:108
 msgid "Get and display a preference value."
 msgstr "Вывести параметр настроек."
 
 #. type: Plain text
-#: amulecmd.1:110 amulecmd.1:144 amulecmd.1:173 amulecmd.1:183
+#: amulecmd.1:110 amulecmd.1:144 amulecmd.1:193 amulecmd.1:203
 msgid "Available values for I<E<lt>whatE<gt>>:"
 msgstr "Возможные значения поля I<E<lt>параметрE<gt>>:"
 
@@ -648,12 +614,6 @@ msgstr "Вывести ограничения канала."
 msgid "Get IPFilter preferences."
 msgstr "Вывести настройки IPFilter."
 
-#. type: SS
-#: amulecmd.1:116
-#, no-wrap
-msgid "Help [ I<E<lt>commandE<gt>> ]"
-msgstr "Help [ I<E<lt>командаE<gt>> ]"
-
 #. type: Plain text
 #: amulecmd.1:120
 msgid ""
@@ -665,12 +625,6 @@ msgstr ""
 "возможных команд. Если вызвана с параметром I<E<lt>командаE<gt>>, показывает "
 "справку по данной команде."
 
-#. type: SS
-#: amulecmd.1:120
-#, no-wrap
-msgid "Pause I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
-msgstr "Pause I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:122
 msgid ""
@@ -680,12 +634,6 @@ msgstr ""
 "Ставит на паузу закачку указанную по I<E<lt>хэшуE<gt>> или "
 "I<E<lt>номеруE<gt>>. Чтобы определить значения, воспользуйтесь командой "
 "B<show>."
-
-#. type: SS
-#: amulecmd.1:122
-#, no-wrap
-msgid "Priority I<E<lt>priorityE<gt>> I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
-msgstr "Priority I<E<lt>приоритетE<gt>> I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
 
 #. type: Plain text
 #: amulecmd.1:124
@@ -728,14 +676,10 @@ msgstr "Показывает состояние работающего поис�
 
 #. type: Plain text
 #: amulecmd.1:140
-msgid "A synonim of the B<exit> command."
+#, fuzzy
+#| msgid "A synonim of the B<exit> command."
+msgid "A synonym of the B<exit> command."
 msgstr "То же что и B<exit>."
-
-#. type: SS
-#: amulecmd.1:140
-#, no-wrap
-msgid "Reload I<E<lt>whatE<gt>>"
-msgstr "Reload I<E<lt>объектE<gt>>"
 
 #. type: Plain text
 #: amulecmd.1:142
@@ -762,12 +706,6 @@ msgstr "Обнуляет лог."
 msgid "Shows you the results of the last search."
 msgstr "Выводит результат последнего поиска."
 
-#. type: SS
-#: amulecmd.1:154
-#, no-wrap
-msgid "Resume I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
-msgstr "Resume I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
-
 #. type: Plain text
 #: amulecmd.1:156
 msgid ""
@@ -777,14 +715,8 @@ msgstr ""
 "Возобновляет закачку указанную по I<E<lt>хэшуE<gt>> или I<E<lt>номеруE<gt>>. "
 "Чтобы определить значения, воспользуйтесь командой B<show>."
 
-#. type: SS
-#: amulecmd.1:156
-#, no-wrap
-msgid "Search I<E<lt>typeE<gt>> I<E<lt>keywordE<gt>>"
-msgstr "Search I<E<lt>типE<gt>> I<E<lt>словоE<gt>>"
-
 #. type: Plain text
-#: amulecmd.1:159
+#: amulecmd.1:160
 msgid ""
 "Makes a search for the given I<E<lt>keywordE<gt>>. A search type and a "
 "keyword to search is mandatory to do this.  Example: `search kad amule' "
@@ -795,80 +727,116 @@ msgstr ""
 "`amule'."
 
 #. type: Plain text
-#: amulecmd.1:161
+#: amulecmd.1:162
 msgid "Available search types:"
 msgstr "Возможные типы поиска:"
 
 #. type: Plain text
-#: amulecmd.1:164
+#: amulecmd.1:165
 msgid "Performs a global search."
 msgstr "Глобальный поиск."
 
 #. type: Plain text
-#: amulecmd.1:166
+#: amulecmd.1:167
 msgid "Performs a search on the Kademlia network."
 msgstr "Поиск по сети kademlia."
 
 #. type: Plain text
-#: amulecmd.1:168
+#: amulecmd.1:169
 msgid "Performs a local search."
 msgstr "Локальный поиск."
 
-#. type: SS
-#: amulecmd.1:169
-#, no-wrap
-msgid "Set I<E<lt>whatE<gt>>"
-msgstr "Set I<E<lt>параметрE<gt>>"
+#. type: Plain text
+#: amulecmd.1:173
+msgid ""
+"Optional filters can be placed before, after, or interleaved with the search "
+"keyword(s):"
+msgstr ""
 
 #. type: Plain text
-#: amulecmd.1:171
+#: amulecmd.1:176
+msgid "Restrict results to the given file type."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:178
+msgid "Restrict results to a specific file extension (e.g.\\ I<iso>, I<mp3>)."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:180
+msgid "Minimum number of sources a result must report."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:183
+msgid ""
+"Smallest file size to return. Suffixes use binary multipliers (K = 1024, M = "
+"K\\(mu1024, G = M\\(mu1024); no suffix means bytes."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:185
+msgid "Largest file size to return. Same suffixes as B<--min-size>."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:189
+msgid ""
+"Example: `search global linux iso --type Iso --min-size 100M' returns "
+"results for \\(lqlinux iso\\(rq of file-type Iso at least 100 MiB."
+msgstr ""
+
+#. type: Plain text
+#: amulecmd.1:191
 msgid "Sets a given preferences value."
 msgstr "Задает указанный параметр."
 
 #. type: Plain text
-#: amulecmd.1:176
+#: amulecmd.1:196
 msgid "Set bandwidth limits."
 msgstr "Задает ограничения канала."
 
 #. type: Plain text
-#: amulecmd.1:178
+#: amulecmd.1:198
 msgid "Set IPFilter preferences."
 msgstr "Задает параметры IPFilter."
 
-#. type: SS
-#: amulecmd.1:179
-#, no-wrap
-msgid "Show I<E<lt>whatE<gt>>"
-msgstr "Show I<E<lt>элементE<gt>>"
-
 #. type: Plain text
-#: amulecmd.1:181
+#: amulecmd.1:201
 msgid "Shows upload/download queue, servers list or shared files list."
 msgstr ""
 "Выводит очередь закачки/отдачи, список серверов или опубликованные файлы."
 
 #. type: Plain text
-#: amulecmd.1:186
+#: amulecmd.1:206
 msgid "Show download queue."
 msgstr "Выводит очередь закачки."
 
 #. type: Plain text
-#: amulecmd.1:188
+#: amulecmd.1:208
 msgid "Show log."
 msgstr "Выводит лог."
 
 #. type: Plain text
-#: amulecmd.1:190
+#: amulecmd.1:210
 msgid "Show servers list."
 msgstr "Выводит список серверов."
 
 #. type: Plain text
-#: amulecmd.1:192
+#: amulecmd.1:212
+#, fuzzy
+#| msgid "Reload shared files list."
+msgid "Show shared files list."
+msgstr "Обновляет список публикуемых файлов."
+
+#. type: Plain text
+#: amulecmd.1:214
 msgid "Show upload queue."
 msgstr "Выводит список отдачи."
 
 #. type: Plain text
-#: amulecmd.1:196
+#: amulecmd.1:218
 msgid ""
 "Shutdown the remote running core (amule/amuled).  This will also shut down "
 "the text client, since it is unusable without a running core."
@@ -876,19 +844,13 @@ msgstr ""
 "Завершает работу ядра (amule/amuled). Так же завершает работу amulecmd, т.к. "
 "он бесполезен без работающего ядра."
 
-#. type: SS
-#: amulecmd.1:196
-#, no-wrap
-msgid "Statistics [ I<E<lt>numberE<gt>> ]"
-msgstr "Statistics [ I<E<lt>числоE<gt>> ]"
-
 #. type: Plain text
-#: amulecmd.1:198
+#: amulecmd.1:220
 msgid "Show statistics tree."
 msgstr "Выводит дерево статистики."
 
 #. type: Plain text
-#: amulecmd.1:202
+#: amulecmd.1:224
 msgid ""
 "The optional I<E<lt>numberE<gt>> in the range of 0-255 can be passed as "
 "argument to this command, which tells how many entries of the client version "
@@ -899,7 +861,7 @@ msgstr ""
 "Указание 0 или пропуск означает `неограниченно'."
 
 #. type: Plain text
-#: amulecmd.1:205
+#: amulecmd.1:227
 msgid ""
 "Example: `statistics 5' will show only the top 5 versions for each client "
 "type."
@@ -908,18 +870,18 @@ msgstr ""
 "каждого типа клиента."
 
 #. type: Plain text
-#: amulecmd.1:207
+#: amulecmd.1:229
 msgid "Show connection status, current up/download speeds, etc."
 msgstr "Вывести статус соединения, скорости, итд."
 
 #. type: SS
-#: amulecmd.1:212 amuleweb.1:137
+#: amulecmd.1:234 amuleweb.1:137
 #, no-wrap
 msgid "Languages"
 msgstr "Языки"
 
 #. type: Plain text
-#: amulecmd.1:218 amuleweb.1:143
+#: amulecmd.1:240 amuleweb.1:143
 msgid ""
 "The I<E<lt>langE<gt>> parameter for the B<-l> option has the following form: "
 "I<lang>[B<_>I<LANG>][B<.>I<encoding>][B<@>I<modifier>] where I<lang> is the "
@@ -934,12 +896,12 @@ msgstr ""
 "использовать определенный вариант локализации в данной категории."
 
 #. type: Plain text
-#: amulecmd.1:220 amuleweb.1:145
+#: amulecmd.1:242 amuleweb.1:145
 msgid "For example, the following strings are valid:"
 msgstr "К примеру, все следующие строчки являются приемлемыми:"
 
 #. type: Plain text
-#: amulecmd.1:234 amuleweb.1:159
+#: amulecmd.1:256 amuleweb.1:159
 msgid ""
 "Though all the above strings are accepted as valid language definitions, "
 "I<encoding> and I<modifier> are yet unused."
@@ -948,7 +910,7 @@ msgstr ""
 "I<модификатор> пока не используются."
 
 #. type: Plain text
-#: amulecmd.1:237 amuleweb.1:162
+#: amulecmd.1:259 amuleweb.1:162
 msgid ""
 "In addition to the format above, you can also specify full language names in "
 "English - so B<-l german> is also valid and is equal to B<-l de_DE>."
@@ -957,7 +919,7 @@ msgstr ""
 "языка. Так, B<-l russian> тоже приемлемо и равносильно B<-l ru_RU>."
 
 #. type: Plain text
-#: amulecmd.1:240 amuleweb.1:165
+#: amulecmd.1:262 amuleweb.1:165
 msgid ""
 "When no locale is defined, either on command-line or in config file, system "
 "default language will be used."
@@ -966,40 +928,40 @@ msgstr ""
 "используется системный."
 
 #. type: Plain text
-#: amulecmd.1:242 amuleweb.1:173
+#: amulecmd.1:264 amuleweb.1:173
 msgid "~/.aMule/remote.conf"
 msgstr "~/.aMule/remote.conf"
 
 #. type: SH
-#: amulecmd.1:242 amuleweb.1:177
+#: amulecmd.1:264 amuleweb.1:177
 #, no-wrap
 msgid "EXAMPLE"
 msgstr "ПРИМЕРЫ"
 
 #. type: Plain text
-#: amulecmd.1:244
+#: amulecmd.1:266
 msgid "Typically amulecmd will be first run as:"
 msgstr "Как правило, в первый раз amulecmd запускается так:"
 
 #. type: Plain text
-#: amulecmd.1:246
+#: amulecmd.1:268
 msgid "B<amulecmd> B<-h> I<hostname> B<-p> I<ECport> B<-P> I<ECpassword> B<-w>"
 msgstr ""
 "B<amulecmd> B<-h> I<имя_хоста> B<-p> I<EC_порт> B<-P> I<EC_пароль> B<-w>"
 
 #. type: Plain text
-#: amulecmd.1:248 amuleweb.1:183
+#: amulecmd.1:270 amuleweb.1:183
 msgid "or"
 msgstr "или"
 
 #. type: Plain text
-#: amulecmd.1:250
+#: amulecmd.1:272
 msgid "B<amulecmd> B<--create-config-from>=I</home/username/.aMule/amule.conf>"
 msgstr ""
 "B<amulecmd> B<--create-config-from>=I</home/username/.aMule/amule.conf>"
 
 #. type: Plain text
-#: amulecmd.1:252 amuleweb.1:187
+#: amulecmd.1:274 amuleweb.1:187
 msgid ""
 "These will save settings to I<$HOME/.aMule/remote.conf>, and later you only "
 "need to type:"
@@ -1008,7 +970,7 @@ msgstr ""
 "будет только набрать:"
 
 #. type: Plain text
-#: amulecmd.1:256
+#: amulecmd.1:278
 msgid "Of course, you don't have to follow this example."
 msgstr "Конечно, вы не обязаны следовать этим рекомендациям."
 
@@ -1129,8 +1091,9 @@ msgstr ""
 msgid ""
 "This manpage was rewritten by Vollstrecker E<lt>amule@vollstreckernet.deE<gt>"
 msgstr ""
-"Переработка страницы помощи: Vollstrecker E<lt>amule@vollstreckernet."
-"deE<gt>, перевод: Radist Morse E<lt>radist.morse@gmail.comE<gt>"
+"Переработка страницы помощи: Vollstrecker "
+"E<lt>amule@vollstreckernet.deE<gt>, перевод: Radist Morse "
+"E<lt>radist.morse@gmail.comE<gt>"
 
 #. type: TH
 #: amuleweb.1:1
@@ -1422,8 +1385,8 @@ msgid ""
 "Sends the given I<E<lt>eD2k-linkE<gt>> to aMule, i.e. writes it to the file "
 "~/.aMule/ED2KLinks, which will be checked by aMule every second for links."
 msgstr ""
-"Пысылает указанную I<E<lt>eD2k-ссылкуE<gt>> в aMule, т.е. пишет ее в файл ~/."
-"aMule/ED2KLinks, который проверяется каждую секунду."
+"Пысылает указанную I<E<lt>eD2k-ссылкуE<gt>> в aMule, т.е. пишет ее в файл "
+"~/.aMule/ED2KLinks, который проверяется каждую секунду."
 
 #. type: Plain text
 #: ed2k.1:30
@@ -1648,54 +1611,102 @@ msgstr ""
 "Основана на программе B<cas>(1) написанной Pedro de Oliveira. B<wxcas> была "
 "написана ThePolish E<lt>thepolish@vipmail.ruE<gt>"
 
-#. type: TH
-#: ../../src/utils/xas/docs/xas.1:1
+#~ msgid "Does not handle fatal exception."
+#~ msgstr "Не обрабатывать фатальные исключительные ситуации."
+
 #, no-wrap
-msgid "XAS"
-msgstr "XAS"
+#~ msgid "Add I<E<lt>eD2k-linkE<gt>> | I<E<lt>magnet-linkE<gt>>"
+#~ msgstr "Add I<E<lt>eD2k-ссылкаE<gt>> | I<E<lt>magnet-ссылкаE<gt>>"
 
-#. type: TH
-#: ../../src/utils/xas/docs/xas.1:1
 #, no-wrap
-msgid "xas v1.9"
-msgstr "xas v1.9"
+#~ msgid "Cancel I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
+#~ msgstr "Cancel I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
 
-#. type: Plain text
-#: ../../src/utils/xas/docs/xas.1:5
-msgid "xas - X-Chat aMule Statistics"
-msgstr "xas - X-Chat статистика aMule"
+#, no-wrap
+#~ msgid "Connect [ I<kad> | I<ed2k> | I<E<lt>ip|nameE<gt>> ]"
+#~ msgstr "Connect [ I<kad> | I<ed2k> | I<E<lt>ip|имяE<gt>> ]"
 
-#. type: Plain text
-#: ../../src/utils/xas/docs/xas.1:7
-msgid "B<none>"
-msgstr "B<нет>"
+#, no-wrap
+#~ msgid "Download I<E<lt>numberE<gt>>"
+#~ msgstr "Download I<E<lt>номерE<gt>>"
 
-#. type: Plain text
-#: ../../src/utils/xas/docs/xas.1:12
-msgid ""
-"B<xas> is a plugin for xchat. For loading see your xchat documentation. "
-"After loading type /xas and it will send statistics to the channel you are "
-"in. These are taken from your Online Signature file.  For this to work, you "
-"must enable the \"Online Signature\" option in aMule's preferences."
-msgstr ""
-"B<xas> - это плагин для xchat. Для установки смотрите вашу документацию по "
-"xchat. После загрузки наберите /xas и он пошлет вашу статистику в канал на "
-"котором вы находитесь. Статистика берется из файла онлайн-подписи. Чтобы это "
-"работало, вы должны включить опцию \"Онлайн подпись\" в настройках aMule."
+#, no-wrap
+#~ msgid "Get I<E<lt>whatE<gt>>"
+#~ msgstr "Get I<E<lt>параметрE<gt>>"
 
-#. type: Plain text
-#: ../../src/utils/xas/docs/xas.1:14
-msgid ""
-"To enable it on every startup of xchat you can just run the autostart-xas "
-"script (in /usr/bin if you installed with --prefix=/usr)."
-msgstr ""
-"Чтобы включать его при каждом запуске xchat вы можете просто выполнить "
-"скрипт autostart-xas (в папке /usr/bin если вы установили с --prefix=/usr)."
+#, no-wrap
+#~ msgid "Help [ I<E<lt>commandE<gt>> ]"
+#~ msgstr "Help [ I<E<lt>командаE<gt>> ]"
 
-#. type: Plain text
-#: ../../src/utils/xas/docs/xas.1:16
-msgid "B<xas> was originally written by niet"
-msgstr "B<xas> изначально был написан niet"
+#, no-wrap
+#~ msgid "Pause I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
+#~ msgstr "Pause I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
+
+#, no-wrap
+#~ msgid "Priority I<E<lt>priorityE<gt>> I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
+#~ msgstr "Priority I<E<lt>приоритетE<gt>> I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
+
+#, no-wrap
+#~ msgid "Reload I<E<lt>whatE<gt>>"
+#~ msgstr "Reload I<E<lt>объектE<gt>>"
+
+#, no-wrap
+#~ msgid "Resume I<E<lt>hashE<gt>> | I<E<lt>numberE<gt>>"
+#~ msgstr "Resume I<E<lt>хэшE<gt>> | I<E<lt>номерE<gt>>"
+
+#, no-wrap
+#~ msgid "Search I<E<lt>typeE<gt>> I<E<lt>keywordE<gt>>"
+#~ msgstr "Search I<E<lt>типE<gt>> I<E<lt>словоE<gt>>"
+
+#, no-wrap
+#~ msgid "Set I<E<lt>whatE<gt>>"
+#~ msgstr "Set I<E<lt>параметрE<gt>>"
+
+#, no-wrap
+#~ msgid "Show I<E<lt>whatE<gt>>"
+#~ msgstr "Show I<E<lt>элементE<gt>>"
+
+#, no-wrap
+#~ msgid "Statistics [ I<E<lt>numberE<gt>> ]"
+#~ msgstr "Statistics [ I<E<lt>числоE<gt>> ]"
+
+#, no-wrap
+#~ msgid "XAS"
+#~ msgstr "XAS"
+
+#, no-wrap
+#~ msgid "xas v1.9"
+#~ msgstr "xas v1.9"
+
+#~ msgid "xas - X-Chat aMule Statistics"
+#~ msgstr "xas - X-Chat статистика aMule"
+
+#~ msgid "B<none>"
+#~ msgstr "B<нет>"
+
+#~ msgid ""
+#~ "B<xas> is a plugin for xchat. For loading see your xchat documentation. "
+#~ "After loading type /xas and it will send statistics to the channel you "
+#~ "are in. These are taken from your Online Signature file.  For this to "
+#~ "work, you must enable the \"Online Signature\" option in aMule's "
+#~ "preferences."
+#~ msgstr ""
+#~ "B<xas> - это плагин для xchat. Для установки смотрите вашу документацию "
+#~ "по xchat. После загрузки наберите /xas и он пошлет вашу статистику в "
+#~ "канал на котором вы находитесь. Статистика берется из файла онлайн-"
+#~ "подписи. Чтобы это работало, вы должны включить опцию \"Онлайн подпись\" "
+#~ "в настройках aMule."
+
+#~ msgid ""
+#~ "To enable it on every startup of xchat you can just run the autostart-xas "
+#~ "script (in /usr/bin if you installed with --prefix=/usr)."
+#~ msgstr ""
+#~ "Чтобы включать его при каждом запуске xchat вы можете просто выполнить "
+#~ "скрипт autostart-xas (в папке /usr/bin если вы установили с --prefix=/"
+#~ "usr)."
+
+#~ msgid "B<xas> was originally written by niet"
+#~ msgstr "B<xas> изначально был написан niet"
 
 #~ msgid "January 2010"
 #~ msgstr "Январь 2010"

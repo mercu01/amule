@@ -39,6 +39,8 @@ there client on the eMule forum..
 #ifndef __SEARCH_H__
 #define __SEARCH_H__
 
+#include <set>
+
 #include "SearchManager.h"
 
 class CKnownFile;
@@ -55,32 +57,44 @@ class CSearch
 	friend class CSearchManager;
 
 public:
-	uint32_t GetSearchID() const throw()		{ return m_searchID; }
-	void	 SetSearchID(uint32_t id) throw()	{ m_searchID = id; }
-	uint32_t GetSearchTypes() const throw()		{ return m_type; }
-	void	 SetSearchTypes(uint32_t val) throw()	{ m_type = val; }
-	void	 SetTargetID(const CUInt128& val) throw() { m_target = val; }
-	CUInt128 GetTarget() const throw()		{ return m_target; }
+	uint32_t GetSearchID() const noexcept		{ return m_searchID; }
+	void	 SetSearchID(uint32_t id) noexcept	{ m_searchID = id; }
+	uint32_t GetSearchTypes() const noexcept		{ return m_type; }
+	void	 SetSearchTypes(uint32_t val) noexcept	{ m_type = val; }
+	void	 SetTargetID(const CUInt128& val) noexcept { m_target = val; }
+	CUInt128 GetTarget() const noexcept		{ return m_target; }
 
-	uint32_t GetAnswers() const throw()		{ return m_fileIDs.size() ? m_answers / ((m_fileIDs.size() + 49) / 50) : m_answers; }
-	uint32_t GetRequestAnswer() const throw()	{ return m_totalRequestAnswers; }
+	uint32_t GetAnswers() const noexcept		{ return m_fileIDs.size() ? m_answers / ((m_fileIDs.size() + 49) / 50) : m_answers; }
+	uint32_t GetRequestAnswer() const noexcept	{ return m_totalRequestAnswers; }
 
-	const wxString&	GetFileName(void) const throw()			{ return m_fileName; }
-	void		SetFileName(const wxString& fileName) throw()	{ m_fileName = fileName; }
+	const wxString&	GetFileName(void) const noexcept			{ return m_fileName; }
+	void		SetFileName(const wxString& fileName) noexcept	{ m_fileName = fileName; }
 
 	void	 AddFileID(const CUInt128& id)		{ m_fileIDs.push_back(id); }
 	void	 PreparePacketForTags(CMemFile* packet, CKnownFile* file);
-	bool	 Stopping() const throw()		{ return m_stopping; }
+	bool	 Stopping() const noexcept		{ return m_stopping; }
 
-	uint32_t GetNodeLoad() const throw()		{ return m_totalLoadResponses == 0 ? 0 : m_totalLoad / m_totalLoadResponses; }
-	uint32_t GetNodeLoadResponse() const throw()	{ return m_totalLoadResponses; }
-	uint32_t GetNodeLoadTotal() const throw()	{ return m_totalLoad; }
-	void	 UpdateNodeLoad(uint8_t load) throw()	{ m_totalLoad += load; m_totalLoadResponses++; }
+	uint32_t GetNodeLoad() const noexcept		{ return m_totalLoadResponses == 0 ? 0 : m_totalLoad / m_totalLoadResponses; }
+	uint32_t GetNodeLoadResponse() const noexcept	{ return m_totalLoadResponses; }
+	uint32_t GetNodeLoadTotal() const noexcept	{ return m_totalLoad; }
+	void	 UpdateNodeLoad(uint8_t load) noexcept	{ m_totalLoad += load; m_totalLoadResponses++; }
 
 	void	 SetSearchTermData(uint32_t searchTermsDataSize, const uint8_t *searchTermsData);
 
-	CKadClientSearcher *	GetNodeSpecialSearchRequester() const throw()				{ return m_nodeSpecialSearchRequester; }
-	void			SetNodeSpecialSearchRequester(CKadClientSearcher *requester) throw()	{ m_nodeSpecialSearchRequester = requester; }
+	CKadClientSearcher *	GetNodeSpecialSearchRequester() const noexcept				{ return m_nodeSpecialSearchRequester; }
+	void			SetNodeSpecialSearchRequester(CKadClientSearcher *requester) noexcept	{ m_nodeSpecialSearchRequester = requester; }
+
+	// User-triggered widening of the Kad result set.  Walks m_responded for
+	// the closest contact we have not already reasked, and sends it
+	// SendFindValue with reaskMore=true (i.e. KADEMLIA_FIND_VALUE_MORE on
+	// the wire instead of KADEMLIA_FIND_VALUE — peers return up to 11
+	// closer contacts instead of 2).  Subsequent FIND_VALUE queries against
+	// those contacts surface additional file matches that the search's
+	// initial alpha=ALPHA_QUERY frontier missed.  Bounded internally by
+	// m_requestedMoreNodes.size() < KADEMLIA_FIND_VALUE_MORE_REASKS to
+	// limit per-search network impact.  Returns true if a reask was
+	// dispatched, false if no eligible candidate remains.
+	bool		RequestMoreResults();
 
 	enum {
 		NODE,
@@ -109,7 +123,7 @@ private:
 	void ProcessResultNotes(const CUInt128 &answer, TagPtrList *info);
 	void JumpStart();
 	void SendFindValue(CContact *contact, bool reaskMore = false);
-	void PrepareToStop() throw();
+	void PrepareToStop() noexcept;
 	void StorePacket();
 
 	uint8_t	GetRequestContactCount() const;
@@ -141,7 +155,17 @@ private:
 	ContactList	m_delete;
 	ContactMap	m_inUse;
 	CUInt128	m_closestDistantFound; // not used for the search itself, but for statistical data collecting
-	CContact *	m_requestedMoreNodesContact;
+
+	// Set of contact ClientIDs we have asked KADEMLIA_FIND_VALUE_MORE
+	// from (the wider 11-contact response variant).  Tracked as a set
+	// rather than a single pointer so that:
+	//   - the existing dead-nodes-fallback at JumpStart can still fire
+	//     once on the closest responded node (semantically: empty set
+	//     before, one entry after, like the old NULL/non-NULL check);
+	//   - RequestMoreResults() can be called multiple times to widen
+	//     further on subsequent responded nodes, capped by
+	//     KADEMLIA_FIND_VALUE_MORE_REASKS.
+	std::set<CUInt128>	m_requestedMoreNodes;
 };
 
 } // End namespace

@@ -42,17 +42,6 @@
 
 #include "config.h"		// Needed for ENABLE_IP2COUNTRY
 
-#ifdef _MSC_VER
-// For MSVC we need to check here if geoip is available at all. MinGW needs the include below however.
-
-// Block unnecessary includes from GeoIP.h
-#define _WINDOWS_
-#define _WINSOCK2API_
-#define _WS2TCPIP_H_
-#define _WSPIAPI_H_
-#include <GeoIP.h>
-#endif
-
 #ifdef ENABLE_IP2COUNTRY
 
 #include "Preferences.h"	// For thePrefs
@@ -62,19 +51,27 @@
 #include <common/Format.h>		// For CFormat()
 #include "common/FileFunctions.h"	// For UnpackArchive
 #include <common/StringFunctions.h>	// For unicode2char()
-#include "pixmaps/flags_xpm/CountryFlags.h"
+#include "icons/icon_data.h"		// For amule_get_all_icons()
 
+#include <wx/artprov.h>			// For wxArtProvider::GetBitmap
 #include <wx/intl.h>
 #include <wx/image.h>
 
-#include <GeoIP.h>
+#include <cstring>			// For strncmp
+
 #include "IP2Country.h"
+#include "geoip/MaxMindDBDatabase.h"
 
 CIP2Country::CIP2Country(const wxString& configDir)
+	: m_db(new CMaxMindDBDatabase())
 {
-	m_geoip = NULL;
-	m_DataBaseName = wxT("GeoIP.dat");
+	m_DataBaseName = "GeoLite2-Country.mmdb";
 	m_DataBasePath = configDir + m_DataBaseName;
+}
+
+bool CIP2Country::IsEnabled()
+{
+	return m_db && m_db->IsOpen();
 }
 
 void CIP2Country::Enable()
@@ -90,22 +87,29 @@ void CIP2Country::Enable()
 		return;
 	}
 
-	m_geoip = GeoIP_open(unicode2char(m_DataBasePath), GEOIP_STANDARD);
+	m_db->Open(m_DataBasePath);
 }
 
 void CIP2Country::Update()
 {
-	AddLogLineN(CFormat(_("Download new GeoIP.dat from %s")) % thePrefs::GetGeoIPUpdateUrl());
-	CHTTPDownloadThread *downloader = new CHTTPDownloadThread(thePrefs::GetGeoIPUpdateUrl(), m_DataBasePath + wxT(".download"), m_DataBasePath, HTTP_GeoIP, true, true);
+	const wxString& url = thePrefs::GetGeoIPUpdateUrl();
+	if (url.IsEmpty()) {
+		AddLogLineC(CFormat(
+			_("No GeoLite2 update URL configured. Download GeoLite2-Country.mmdb manually (a free MaxMind account is required) and place it at %s, or set the URL in Preferences."))
+			% m_DataBasePath);
+		thePrefs::SetGeoIPEnabled(false);
+		return;
+	}
+	AddLogLineN(CFormat(_("Download new %s from %s")) % m_DataBaseName % url);
+	CHTTPDownloadThread *downloader = new CHTTPDownloadThread(url, m_DataBasePath + ".download", m_DataBasePath, HTTP_GeoIP, true, true);
 	downloader->Create();
 	downloader->Run();
 }
 
 void CIP2Country::Disable()
 {
-	if (m_geoip) {
-		GeoIP_delete(m_geoip);
-		m_geoip = NULL;
+	if (m_db) {
+		m_db->Close();
 	}
 }
 
@@ -114,17 +118,17 @@ void CIP2Country::DownloadFinished(uint32 result)
 	if (result == HTTP_Success) {
 		Disable();
 		// download succeeded. Switch over to new database.
-		wxString newDat = m_DataBasePath + wxT(".download");
+		wxString newDat = m_DataBasePath + ".download";
 
 		// Try to unpack the file, might be an archive
-		wxWCharBuffer dataBaseName = m_DataBaseName.wc_str();
-		const wxChar* geoip_files[] = {
+		wxScopedCharBuffer dataBaseName = m_DataBaseName.utf8_str();
+		const char* geoip_files[] = {
 			dataBaseName,
 			NULL
 		};
 
 		if (UnpackArchive(CPath(newDat), geoip_files).second == EFT_Error) {
-			AddLogLineC(_("Download of GeoIP.dat file failed, aborting update."));
+			AddLogLineC(CFormat(_("Download of %s file failed, aborting update.")) % m_DataBaseName);
 			return;
 		}
 
@@ -141,10 +145,10 @@ void CIP2Country::DownloadFinished(uint32 result)
 		}
 
 		Enable();
-		if (m_geoip) {
+		if (IsEnabled()) {
 			AddLogLineN(CFormat(_("Successfully updated %s")) % m_DataBaseName);
 		} else {
-			AddLogLineC(_("Error updating GeoIP.dat"));
+			AddLogLineC(CFormat(_("Error updating %s")) % m_DataBaseName);
 		}
 	} else if (result == HTTP_Skipped) {
 		AddLogLineN(CFormat(_("Skipped download of %s, because requested file is not newer.")) % m_DataBaseName);
@@ -159,11 +163,28 @@ void CIP2Country::DownloadFinished(uint32 result)
 
 void CIP2Country::LoadFlags()
 {
-	// Load data from xpm files
-	for (int i = 0; i < flags::FLAGS_XPM_SIZE; ++i) {
+	// Walk the embedded icon table and pick out anything named
+	// "flag_<code>". The table is built by src/icons/embed_icons.py
+	// from src/icons/flags/<code>.png at compile time; CamuleArtProvider
+	// (registered in CamuleGuiApp::OnInit) hands us back a decoded
+	// wxBitmap for each.
+	int icon_count = 0;
+	const struct AMuleIconEntry *icons = amule_get_all_icons(&icon_count);
+	const char flag_prefix[] = "flag_";
+	const size_t flag_prefix_len = sizeof(flag_prefix) - 1;
+
+	for (int i = 0; i < icon_count; ++i) {
+		const char *name = icons[i].name;
+		if (strncmp(name, flag_prefix, flag_prefix_len) != 0) {
+			continue;
+		}
+		const char *code = name + flag_prefix_len;
+
 		CountryData countrydata;
-		countrydata.Name = wxString(flags::flagXPMCodeVector[i].code, wxConvISO8859_1);
-		countrydata.Flag = wxImage(flags::flagXPMCodeVector[i].xpm);
+		countrydata.Name = wxString(code, wxConvISO8859_1);
+
+		const wxString art_id = wxString::Format("amule:%s", name);
+		countrydata.Flag = wxArtProvider::GetBitmap(art_id).ConvertToImage();
 
 		if (countrydata.Flag.IsOk()) {
 			m_CountryDataMap[countrydata.Name] = countrydata;
@@ -173,46 +194,39 @@ void CIP2Country::LoadFlags()
 		}
 	}
 
-	AddDebugLogLineN(logGeneral, CFormat(wxT("Loaded %d flag bitmaps.")) % m_CountryDataMap.size());  // there's never just one - no plural needed
+	AddDebugLogLineN(logGeneral, CFormat("Loaded %d flag bitmaps.") % m_CountryDataMap.size());  // there's never just one - no plural needed
 }
 
 
 CIP2Country::~CIP2Country()
 {
 	Disable();
+	delete m_db;
 }
 
 
 const CountryData& CIP2Country::GetCountryData(const wxString &ip)
 {
-	// Should prevent the crash if the GeoIP database does not exists
-	if (m_geoip == NULL) {
-		CountryDataMap::iterator it = m_CountryDataMap.find(wxString(wxT("unknown")));
-		it->second.Name = wxT("?");
+	// Should prevent the crash if the database does not exist
+	if (!IsEnabled()) {
+		CountryDataMap::iterator it = m_CountryDataMap.find(wxString("unknown"));
+		it->second.Name = "?";
 		return it->second;
 	}
 
-	// wxString::MakeLower() fails miserably in Turkish localization with their dotted/non-dotted 'i's
-	// So fall back to some good ole C string processing.
-	std::string strCode;
-	const char * c = GeoIP_country_code_by_addr(m_geoip, unicode2char(ip));
-	if (!c) {
-		c = "unknown";
+	wxString CCode = m_db->GetCountryCode(ip);
+	if (CCode.IsEmpty()) {
+		CCode = "unknown";
 	}
-	for ( ; *c; c++) {
-		strCode += ((*c >= 'A' && *c <= 'Z') ? *c + 'a' - 'A' : *c);
-	}
-
-	const wxString CCode(strCode.c_str(), wxConvISO8859_1);
 
 	CountryDataMap::iterator it = m_CountryDataMap.find(CCode);
 	if (it == m_CountryDataMap.end()) {
 		// Show the code and ?? flag
-		it = m_CountryDataMap.find(wxString(wxT("unknown")));
+		it = m_CountryDataMap.find(wxString("unknown"));
 		wxASSERT(it != m_CountryDataMap.end());
 		if (CCode.IsEmpty()) {
-			it->second.Name = wxT("?");
-		} else{
+			it->second.Name = "?";
+		} else {
 			it->second.Name = CCode;
 		}
 	}
@@ -226,12 +240,13 @@ const CountryData& CIP2Country::GetCountryData(const wxString &ip)
 
 CIP2Country::CIP2Country(const wxString&)
 {
-	m_geoip = NULL;
+	m_db = NULL;
 }
 
 CIP2Country::~CIP2Country() {}
 void CIP2Country::Enable() {}
 void CIP2Country::DownloadFinished(uint32) {}
+bool CIP2Country::IsEnabled() { return false; }
 
 const CountryData& CIP2Country::GetCountryData(const wxString &)
 {

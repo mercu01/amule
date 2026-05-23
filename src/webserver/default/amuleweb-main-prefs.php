@@ -122,44 +122,51 @@ var initvals = new Object;
 			"new_files_auto_dl_prio", "new_files_auto_ul_prio"
 		);
 		$conn_opts = array("max_line_up_cap","max_up_limit",
-			"max_line_down_cap","max_down_limit", "slot_alloc", 
-			"tcp_port","udp_port","udp_dis","max_file_src","max_conn_total","autoconn_en","reconn_en", 
-      "EC_TAG_CONN_START_HOUR_ALT_RATE",
-      "EC_TAG_CONN_START_MINUTE_ALT_RATE",
-      "EC_TAG_CONN_END_HOUR_ALT_RATE",
-      "EC_TAG_CONN_END_MINUTE_ALT_RATE",
-      "EC_TAG_CONN_MAX_UL_ALT_RATE",
-      "EC_TAG_CONN_MAX_DL_ALT_RATE",
-      "EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE");
+			"max_line_down_cap","max_down_limit", "slot_alloc",
+			"tcp_port","udp_port","udp_dis","max_file_src","max_conn_total","autoconn_en","reconn_en",
+			"network_ed2k","network_kad",
+			"EC_TAG_CONN_START_HOUR_ALT_RATE",
+			"EC_TAG_CONN_START_MINUTE_ALT_RATE",
+			"EC_TAG_CONN_END_HOUR_ALT_RATE",
+			"EC_TAG_CONN_END_MINUTE_ALT_RATE",
+			"EC_TAG_CONN_MAX_UL_ALT_RATE",
+			"EC_TAG_CONN_MAX_DL_ALT_RATE",
+			"EC_TAG_CONN_SLOT_ALLOCATION_ALT_RATE");
 		$webserver_opts = array("use_gzip", "autorefresh_time");
-		
+
 		$all_opts;
 		foreach ($conn_opts as $i) {
 			$curr_value = $HTTP_GET_VARS[$i];
 			if ( $curr_value == "on") $curr_value = 1;
 			if ( $curr_value == "") $curr_value = 0;
-			
+
 			$all_opts["connection"][$i] = $curr_value;
 		}
 		foreach ($file_opts as $i) {
 			$curr_value = $HTTP_GET_VARS[$i];
 			if ( $curr_value == "on") $curr_value = 1;
 			if ( $curr_value == "") $curr_value = 0;
-			
+
 			$all_opts["files"][$i] = $curr_value;
 		}
 		foreach ($webserver_opts as $i) {
 			$curr_value = $HTTP_GET_VARS[$i];
 			if ( $curr_value == "on") $curr_value = 1;
 			if ( $curr_value == "") $curr_value = 0;
-			
+
 			$all_opts["webserver"][$i] = $curr_value;
+		}
+		// general: nickname is a single top-level string, not nested.
+		$nick_value = $HTTP_GET_VARS["nick"];
+		if ( $nick_value != "" ) {
+			$all_opts["nick"] = $nick_value;
 		}
 		//var_dump($all_opts);
 		amule_set_options($all_opts);
 	}
 	$opts = amule_get_options();
 	//var_dump($opts);
+	echo 'initvals["nick"] = "', $opts["nick"], '";';
 	$opt_groups = array("connection", "files", "webserver");
 	//var_dump($opt_groups);
 	foreach ($opt_groups as $group) {
@@ -177,6 +184,7 @@ function init_data()
 	var frm = document.forms.mainform
 
 	var str_param_names = new Array(
+		"nick",
 		"max_line_down_cap", "max_line_up_cap",
 		"max_up_limit", "max_down_limit", "max_file_src",
 		"slot_alloc", "max_conn_total",
@@ -199,7 +207,8 @@ function init_data()
 		"aich_trust", "alloc_full", "alloc_full_chunks",
 		"check_free_space", "extract_metadata", "ich_en",
 		"new_files_auto_dl_prio", "new_files_auto_ul_prio",
-		"use_gzip"
+		"use_gzip",
+		"network_ed2k", "network_kad"
 		)
 	for(i = 0; i < check_param_names.length; i++) {
 		frm[check_param_names[i]].checked = initvals[check_param_names[i]] == "1" ? true : false;
@@ -242,10 +251,23 @@ function init_data()
       <td bgcolor="#FFFFFF"><form name="mainform" action="amuleweb-main-prefs.php" method="post">
               <table border="0" align="center" cellpadding="0" cellspacing="6">
                
-    <tr align="center" valign="top"> 
-      <td> 
+    <tr align="center" valign="top">
+      <td>
         <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
-          <tr> 
+          <tr>
+            <td width="22">&nbsp;</td>
+            <th>General</th>
+            <td width="63">&nbsp;</td>
+          </tr>
+          <tr>
+            <td width="22" height="25">&nbsp;</td>
+            <td height="25">Nickname</td>
+            <td width="63" height="25">
+<input name="nick" type="text" id="nick0" size="20"></td>
+          </tr>
+        </table>
+        <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
+          <tr>
             <td width="22">&nbsp;</td>
             <th>Webserver</th>
             <td width="63">&nbsp;</td>
@@ -458,18 +480,30 @@ function init_data()
             <td height="25"> Autoconnect at startup </td>
             <td width="63" height="25">&nbsp;</td>
           </tr>
-          <tr> 
+          <tr>
             <td width="22" height="25">
 <input name="reconn_en" type="checkbox" id="reconn_en6"></td>
             <td height="25"> Reconnect when connection lost </td>
             <td width="63" height="25">&nbsp;</td>
           </tr>
+          <tr>
+            <td width="22" height="25">
+<input name="network_ed2k" type="checkbox" id="network_ed2k6"></td>
+            <td height="25"> Enable ED2K network </td>
+            <td width="63" height="25">&nbsp;</td>
+          </tr>
+          <tr>
+            <td width="22" height="25">
+<input name="network_kad" type="checkbox" id="network_kad6"></td>
+            <td height="25"> Enable Kademlia network </td>
+            <td width="63" height="25">&nbsp;</td>
+          </tr>
         </table></td>
     </tr>
-    <tr align="center" valign="top"> 
-      <td> 
+    <tr align="center" valign="top">
+      <td>
         <table width="350" border="0" align="center" cellpadding="0" cellspacing="0" >
-          <tr> 
+          <tr>
             <td width="22">&nbsp;</td>
             <th>Network settings</th>
             <td width="63">&nbsp;</td>

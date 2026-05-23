@@ -153,6 +153,7 @@ private:
 
 	void		OnBnClickedStart(wxCommandEvent& evt);
 	void		OnBnClickedStop(wxCommandEvent& evt);
+	void		OnBnClickedSearchMore(wxCommandEvent& evt);
 
 
 	/**
@@ -168,7 +169,7 @@ private:
 
 	wxArrayString m_searchchoices;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 #endif

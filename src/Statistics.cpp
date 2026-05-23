@@ -290,7 +290,7 @@ static uint64_t ReadUInt64FromCfg(wxConfigBase* cfg, const wxString& key)
 {
 	wxString buffer;
 
-	cfg->Read(key, &buffer, wxT("0"));
+	cfg->Read(key, &buffer, "0");
 
 	uint64 tmp = 0;
 	for (unsigned int i = 0; i < buffer.Length(); ++i) {
@@ -312,7 +312,7 @@ void CStatistics::Load()
 	s_totalSent = 0;
 	s_totalReceived = 0;
 	try {
-		CPath path(JoinPaths(thePrefs::GetConfigDir(), wxT("statistics.dat")));
+		CPath path(JoinPaths(thePrefs::GetConfigDir(), "statistics.dat"));
 		if (path.FileExists() && f.Open(path)) {
 			uint8_t version = f.ReadUInt8();
 			if (version == 0) {
@@ -327,14 +327,14 @@ void CStatistics::Load()
 	// Load old values from config
 	bool cfgChanged = false;
 	wxConfigBase* cfg = wxConfigBase::Get();
-	if (cfg->HasEntry(wxT("/Statistics/TotalUploadedBytes"))) {
-		s_totalSent += ReadUInt64FromCfg(cfg, wxT("/Statistics/TotalUploadedBytes"));
-		cfg->DeleteEntry(wxT("/Statistics/TotalUploadedBytes"));
+	if (cfg->HasEntry("/Statistics/TotalUploadedBytes")) {
+		s_totalSent += ReadUInt64FromCfg(cfg, "/Statistics/TotalUploadedBytes");
+		cfg->DeleteEntry("/Statistics/TotalUploadedBytes");
 		cfgChanged = true;
 	}
-	if (cfg->HasEntry(wxT("/Statistics/TotalDownloadedBytes"))) {
-		s_totalReceived += ReadUInt64FromCfg(cfg, wxT("/Statistics/TotalDownloadedBytes"));
-		cfg->DeleteEntry(wxT("/Statistics/TotalDownloadedBytes"));
+	if (cfg->HasEntry("/Statistics/TotalDownloadedBytes")) {
+		s_totalReceived += ReadUInt64FromCfg(cfg, "/Statistics/TotalDownloadedBytes");
+		cfg->DeleteEntry("/Statistics/TotalDownloadedBytes");
 		cfgChanged = true;
 	}
 	if (cfgChanged) {
@@ -350,7 +350,7 @@ void CStatistics::Save()
 	if (s_statsNeedSave) {
 		CFile f;
 
-		if (f.Open(JoinPaths(thePrefs::GetConfigDir(), wxT("statistics.dat")), CFile::write)) {
+		if (f.Open(JoinPaths(thePrefs::GetConfigDir(), "statistics.dat"), CFile::write)) {
 			f.WriteUInt8(0);	/* version */
 			f.WriteUInt64(s_totalSent);
 			f.WriteUInt64(s_totalReceived);
@@ -596,6 +596,94 @@ unsigned CStatistics::GetHistoryForWeb(  // Assemble arrays of sample points for
 }
 
 
+unsigned CStatistics::GetHistoryForGui(
+	unsigned cntPoints,
+	double sStep,
+	double *sStart,
+	uint32 **graphData,
+	uint32 **connData,
+	uint64 &sessionDlKBytes,
+	uint64 &sessionUlKBytes,
+	uint64 &sessionKadTotal,
+	double &sessionTimespanSec)
+{
+	*graphData = NULL;
+	*connData = NULL;
+	sessionDlKBytes = 0;
+	sessionUlKBytes = 0;
+	sessionKadTotal = 0;
+	sessionTimespanSec = 0.0;
+
+	if (*sStart < 0.0) {
+		*sStart = 0.0;
+	}
+	if (sStep == 0.0 || cntPoints == 0) {
+		return 0;
+	}
+	unsigned	cntFilled = 0;
+	listRPOS	pos = listHR.rbegin();
+	double		LastTimeStamp = pos->sTimestamp;
+	double		sTarget = LastTimeStamp;
+
+	HR	**pphr = new HR *[cntPoints];
+
+	while (pos != listHR.rend()) {
+		if (pos->sTimestamp > sTarget) {
+			++pos;
+			continue;
+		}
+		pphr[cntFilled] = &(*pos);
+		if (++cntFilled == cntPoints)
+			break;
+		if (pos->sTimestamp <= *sStart)
+			break;
+		if ((sTarget -= sStep) <= 0.0) {
+			pphr[cntFilled++] = NULL;
+			break;
+		}
+	}
+
+	if (cntFilled) {
+		*graphData = new uint32 [4 * cntFilled];
+		*connData  = new uint32 [2 * cntFilled];
+		for (unsigned int i = 0; i < cntFilled; i++) {
+			HR *phr = pphr[cntFilled - i - 1];
+			if (phr) {
+				(*graphData)[4 * i    ] = ENDIAN_HTONL((uint32)(phr->kBpsDownCur * 1024.0));
+				(*graphData)[4 * i + 1] = ENDIAN_HTONL((uint32)(phr->kBpsUpCur * 1024.0));
+				(*graphData)[4 * i + 2] = ENDIAN_HTONL((uint32)phr->cntConnections);
+				(*graphData)[4 * i + 3] = ENDIAN_HTONL((uint32)phr->kadNodesCur);
+				(*connData)[2 * i    ]  = ENDIAN_HTONL((uint32)phr->cntUploads);
+				(*connData)[2 * i + 1]  = ENDIAN_HTONL((uint32)phr->cntDownloads);
+			} else {
+				(*graphData)[4 * i] = (*graphData)[4 * i + 1] = 0;
+				(*graphData)[4 * i + 2] = (*graphData)[4 * i + 3] = 0;
+				(*connData)[2 * i]  = (*connData)[2 * i + 1] = 0;
+			}
+		}
+		// Session totals are pulled from the latest sampled point so the
+		// graph's session-average line matches the daemon-side
+		// kBytesReceived / sTimestamp value monolithic amule plots —
+		// instead of forcing amulegui to integrate locally from connect
+		// time (which would diverge whenever the GUI attaches to a
+		// long-running daemon).
+		HR *latest = pphr[cntFilled - 1];
+		if (latest) {
+			sessionDlKBytes    = (uint64)latest->kBytesReceived;
+			sessionUlKBytes    = (uint64)latest->kBytesSent;
+			sessionKadTotal    = latest->kadNodesTotal;
+			sessionTimespanSec = latest->sTimestamp;
+		}
+	}
+
+	delete [] pphr;
+
+	*sStart = LastTimeStamp;
+
+	return cntFilled;
+}
+
+
 void CStatistics::ComputeAverages(
 	HR		**pphr,		// pointer to (end of) array of assembled history records
 	listRPOS	pos,		// position in history list from which to backtrack
@@ -614,7 +702,7 @@ void CStatistics::ComputeAverages(
 		case GRAPH_UP:		runningAvg = &m_graphRunningAvgUp;		break;
 		case GRAPH_KAD:		runningAvg = &m_graphRunningAvgKad;		break;
 		default:
-			wxCHECK_RET(false, wxT("ComputeAverages called with unsupported graph type."));
+			wxCHECK_RET(false, "ComputeAverages called with unsupported graph type.");
 	}
 
 	runningAvg->m_timespan = avgTime * 1000;
@@ -646,7 +734,7 @@ void CStatistics::ComputeAverages(
 				value = (uint32)(pos->kadNodesCur * 1024.0);
 				break;
 			default:
-				wxCHECK_RET(false, wxT("ComputeAverages called with unsupported graph type."));
+				wxCHECK_RET(false, "ComputeAverages called with unsupported graph type.");
 			}
 
 			runningAvg->m_byte_history.push_front(value);
@@ -751,7 +839,7 @@ void CStatistics::InitStatsTree()
 	s_waitingUploads = static_cast<CStatTreeItemNativeCounter*>(tmpRoot2->AddChild(new CStatTreeItemNativeCounter(wxTRANSLATE("Waiting Uploads: %s"))));
 	s_totalSuccUploads = static_cast<CStatTreeItemCounter*>(tmpRoot2->AddChild(new CStatTreeItemCounter(wxTRANSLATE("Total successful upload sessions: %s"))));
 	s_totalFailedUploads = static_cast<CStatTreeItemCounter*>(tmpRoot2->AddChild(new CStatTreeItemCounter(wxTRANSLATE("Total failed upload sessions: %s"))));
-	s_totalUploadTime = new CStatTreeItemCounter(wxEmptyString);
+	s_totalUploadTime = new CStatTreeItemCounter("");
 	tmpRoot2->AddChild(new CStatTreeItemAverage(wxTRANSLATE("Average upload time: %s"), s_totalUploadTime, s_totalSuccUploads, dmTime));
 
 	tmpRoot2 = tmpRoot1->AddChild(new CStatTreeItemBase(wxTRANSLATE("Downloads")), 1);
@@ -792,7 +880,7 @@ void CStatistics::InitStatsTree()
 	//s_lowID = static_cast<CStatTreeItem*>(s_clients->AddChild(new CStatTreeItem(wxTRANSLATE("LowID: %u (%.2f%% Total %.2f%% Known)")), 5));
 	//s_secIdentOnOff = static_cast<CStatTreeItem*>(s_clients->AddChild(new CStatTreeItem(wxTRANSLATE("SecIdent On/Off: %u (%.2f%%) : %u (%.2f%%)")), 4));
 #ifdef __DEBUG__
-	s_hasSocket = static_cast<CStatTreeItemNativeCounter*>(s_clients->AddChild(new CStatTreeItemNativeCounter(wxT("HasSocket: %s")), 3));
+	s_hasSocket = static_cast<CStatTreeItemNativeCounter*>(s_clients->AddChild(new CStatTreeItemNativeCounter("HasSocket: %s"), 3));
 #endif
 	s_filtered = static_cast<CStatTreeItemNativeCounter*>(s_clients->AddChild(new CStatTreeItemNativeCounter(wxTRANSLATE("Filtered: %s")), 2));
 	s_banned = static_cast<CStatTreeItemNativeCounter*>(s_clients->AddChild(new CStatTreeItemNativeCounter(wxTRANSLATE("Banned: %s")), 1));
@@ -856,7 +944,7 @@ void CStatistics::AddSourceOrigin(unsigned origin)
 	if (counter) {
 		++(*counter);
 	} else {
-		counter = new CStatTreeItemCounter(OriginToText(origin) + wxT(": %s"), stHideIfZero | stShowPercent);
+		counter = new CStatTreeItemCounter(OriginToText(origin) + ": %s", stHideIfZero | stShowPercent);
 		++(*counter);
 		s_foundSources->AddChild(counter, 0x0100 + origin);
 	}
@@ -895,7 +983,7 @@ void CStatistics::AddDownloadFromSoft(uint8 SoftType, uint32 bytes)
 	if (s_sessionDownload->HasChildWithId(id)) {
 		(*static_cast<CStatTreeItemCounter*>(s_sessionDownload->GetChildById(id))) += bytes;
 	} else {
-		CStatTreeItemCounter* tmp = new CStatTreeItemCounter(GetSoftName(SoftType) + wxT(": %s"));
+		CStatTreeItemCounter* tmp = new CStatTreeItemCounter(GetSoftName(SoftType) + ": %s");
 		tmp->SetDisplayMode(dmBytes);
 		(*tmp) += bytes;
 		s_sessionDownload->AddChild(tmp, id);
@@ -909,7 +997,7 @@ void CStatistics::AddUploadToSoft(uint8 SoftType, uint32 bytes)
 	if (s_sessionUpload->HasChildWithId(id)) {
 		(*static_cast<CStatTreeItemCounter*>(s_sessionUpload->GetChildById(id))) += bytes;
 	} else {
-		CStatTreeItemCounter* tmp = new CStatTreeItemCounter(GetSoftName(SoftType) + wxT(": %s"));
+		CStatTreeItemCounter* tmp = new CStatTreeItemCounter(GetSoftName(SoftType) + ": %s");
 		tmp->SetDisplayMode(dmBytes);
 		(*tmp) += bytes;
 		s_sessionUpload->AddChild(tmp, id);
@@ -952,7 +1040,7 @@ void CStatistics::AddKnownClient(CUpDownClient *pClient)
 		if (!SupportsOSInfo(clientSoft)) {
 			flags |= stCapChildren;
 		}
-		client = new CStatTreeItemCounter(GetSoftName(clientSoft) + wxT(": %s"), flags);
+		client = new CStatTreeItemCounter(GetSoftName(clientSoft) + ": %s", flags);
 		++(*client);
 		s_clients->AddChild(client, id);
 		if (SupportsOSInfo(clientSoft)) {
@@ -969,7 +1057,7 @@ void CStatistics::AddKnownClient(CUpDownClient *pClient)
 		++(*version);
 	} else {
 		const wxString& versionStr = pClient->GetVersionString();
-		CStatTreeItemCounter *version = new CStatTreeItemCounter((versionStr.IsEmpty() ? wxString(wxTRANSLATE("Unknown")) : versionStr) + wxT(": %s"), stShowPercent | stHideIfZero);
+		CStatTreeItemCounter *version = new CStatTreeItemCounter((versionStr.IsEmpty() ? wxString(wxTRANSLATE("Unknown")) : versionStr) + ": %s", stShowPercent | stHideIfZero);
 		++(*version);
 		versionRoot->AddChild(version, clientVersion, SupportsOSInfo(clientSoft));
 	}
@@ -982,7 +1070,7 @@ void CStatistics::AddKnownClient(CUpDownClient *pClient)
 		if (OSNode) {
 			++(*OSNode);
 		} else {
-			OSNode = new CStatTreeItemCounter((OS_ID ? OSInfo : wxString(wxTRANSLATE("Not Received"))) + wxT(": %s"), stShowPercent | stHideIfZero);
+			OSNode = new CStatTreeItemCounter((OS_ID ? OSInfo : wxString(wxTRANSLATE("Not Received"))) + ": %s", stShowPercent | stHideIfZero);
 			++(*OSNode);
 			OSRoot->AddChild(OSNode, OS_ID, true);
 		}
@@ -1053,7 +1141,7 @@ void CStatistics::UpdateStats(const CECPacket* stats)
 	s_statData[sdKadIndexedKeywords] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_INDEXED_KEYWORDS)->GetInt();
 	s_statData[sdKadIndexedNotes] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_INDEXED_NOTES)->GetInt();
 	s_statData[sdKadIndexedLoad] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_INDEXED_LOAD)->GetInt();
-	s_statData[sdKadIPAdress] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_IP_ADRESS)->GetInt();
+	s_statData[sdKadIPAddress] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_IP_ADDRESS)->GetInt();
 	s_statData[sdKadNodes] = stats->GetTagByNameSafe(EC_TAG_STATS_KAD_NODES)->GetInt();
 	s_statData[sdBuddyStatus] = stats->GetTagByNameSafe(EC_TAG_STATS_BUDDY_STATUS)->GetInt();
 	s_statData[sdBuddyIP] = stats->GetTagByNameSafe(EC_TAG_STATS_BUDDY_IP)->GetInt();

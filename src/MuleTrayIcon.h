@@ -28,6 +28,7 @@
 
 #ifndef AMULE_DAEMON
 
+#include "config.h"
 
 enum TaskbarNotifier
 {
@@ -39,14 +40,9 @@ enum TaskbarNotifier
 	TBN_NEWVERSION
 };
 
-#include <wx/taskbar.h>
-#include <wx/icon.h>
-#include <wx/dcmemory.h>
-
 #include "Types.h"	// Needed for uint32
 
 class wxString;
-class wxMenu;
 
 enum {
 	TRAY_ICON_DISCONNECTED,
@@ -54,40 +50,88 @@ enum {
 	TRAY_ICON_HIGHID
 };
 
+// Backend selection:
+//
+// Linux with libayatana-appindicator3 → SNI (StatusNotifierItem)
+//   backend that talks D-Bus directly. This is what GNOME Shell (with
+//   the AppIndicators extension Ubuntu ships by default), KDE Plasma,
+//   Sway/wlroots, and every other modern desktop actually consume.
+//
+// Everywhere else (Windows, macOS, Linux build without the dep) →
+//   wxTaskBarIcon, which on those platforms hits a working native API
+//   (Win32 NOTIFYICONDATA, NSStatusItem). On Linux without the dep
+//   wxTaskBarIcon falls through to the legacy GtkStatusIcon API which
+//   GNOME 3.26+ silently dropped — distros really should ship the dep.
+#ifdef WITH_LIBAYATANA_APPINDICATOR
+struct _AppIndicator;
+struct _GtkWidget;
+typedef struct _AppIndicator AppIndicator;
+typedef struct _GtkWidget GtkWidget;
+#else
+#include <wx/taskbar.h>
+#include <wx/icon.h>
+#include <wx/dcmemory.h>
+class wxMenu;
+#endif
+
 
 /**
  * The mule tray icon class is responsible for drawing the mule systray icon
  * and reacting to the user input on it.
  */
-class CMuleTrayIcon : public wxTaskBarIcon
+class CMuleTrayIcon
+#ifndef WITH_LIBAYATANA_APPINDICATOR
+	: public wxTaskBarIcon
+#endif
 {
 public:
-	/**
-	 * Constructor.
-	 */
 	CMuleTrayIcon();
-
-	/**
-	 * Destructor.
-	 */
 	~CMuleTrayIcon();
 
 	/**
 	 * Set the Tray icon.
-	 * @param Icon The wxIcon object with the new tray icon
+	 * @param Icon  TRAY_ICON_HIGHID / LOWID / DISCONNECTED
+	 * @param percent  download-speed bar percentage (legacy backend only;
+	 *                 ignored by the SNI backend, which switches between
+	 *                 three static state icons instead)
 	 */
 	void SetTrayIcon(int Icon, uint32 percent);
 
 	/**
-	 * Set the Tray tooltip
-	 * @param Tip The wxString object with the new tray tooltip
+	 * Set the Tray tooltip.
 	 */
 	void SetTrayToolTip(const wxString& Tip);
 
+	// Action handlers — invoked by the GTK menu (Ayatana backend) or by
+	// the wxMenu event table (wxTaskBarIcon backend).
+	void DoConnectDisconnect();
+	void DoShowHide();
+	// Deterministic non-toggling variants used by the SNI menu on
+	// Wayland, where window-iconize state isn't reliably detectable
+	// so a single toggle would mislabel itself when the user clicks
+	// the OS minimize button.
+	void DoShow();
+	void DoHide();
+	void DoExit();
+	void DoSetUploadLimit(long kBytesPerSec);   // UNLIMITED for no cap
+	void DoSetDownloadLimit(long kBytesPerSec);
+
+#ifdef WITH_LIBAYATANA_APPINDICATOR
+	// SNI menus are built once and held; callers re-invoke this to
+	// refresh the "Show aMule"/"Hide aMule" label after the main
+	// window's visibility changes outside the tray click path
+	// (e.g. close-button HideOnClose, minimize-to-tray).
+	void RebuildMenu();
+#endif
+
 private:
 
+#ifdef WITH_LIBAYATANA_APPINDICATOR
+	AppIndicator* m_indicator;
+	GtkWidget*    m_menu;
+	int           m_lastIconState;
+#else
 	virtual wxMenu* CreatePopupMenu();
-
 	void UpdateTray();
 
 	void SwitchShow(wxTaskBarIconEvent&);
@@ -108,7 +152,8 @@ private:
 	wxMemoryDC IconWithSpeed;
 	wxString CurrentTip;
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
+#endif
 };
 
 #endif // DAEMON

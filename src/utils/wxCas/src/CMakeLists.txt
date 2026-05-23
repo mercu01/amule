@@ -15,7 +15,7 @@ target_include_directories (wxcas
 
 if (WIN32)
 	target_sources (wxcas
-		PRIVATE ${CMAKE_SOURCE_DIR}/version.rc
+		PRIVATE ${CMAKE_BINARY_DIR}/version.rc
 	)
 
 	set_target_properties (wxcas
@@ -24,9 +24,15 @@ if (WIN32)
 endif()
 
 target_link_libraries (wxcas
-	wxWidgets::CORE
-	wxWidgets::NET
+	PRIVATE wxWidgets::CORE
+	PRIVATE wxWidgets::NET
 )
+
+if (APPLE)
+	target_link_libraries (wxcas
+		PRIVATE "-framework CoreServices"
+	)
+endif()
 
 install (TARGETS wxcas
 	RUNTIME DESTINATION bin

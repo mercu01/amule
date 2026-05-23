@@ -99,7 +99,7 @@ inline void DoSplitPath(const wxString& strPath, wxString* path, wxString* name)
 	wxFileName::SplitPath(strPath, pVol, path, name, pExt, &hasExt);
 
 	if (hasExt && pExt) {
-		*name += wxT(".") + ext;
+		*name += "." + ext;
 	}
 
 	if (path && vol.Length()) {
@@ -116,25 +116,25 @@ static wxString DoCleanup(const wxString& filename, bool keepSpaces, bool isFAT3
 		const wxChar c = filename[i];
 
 		switch (c) {
-			case wxT('/'):
+			case '/':
 				continue;
 
-			case wxT('\"'):
-			case wxT('*'):
-			case wxT('<'):
-			case wxT('>'):
-			case wxT('?'):
-			case wxT('|'):
-			case wxT('\\'):
-			case wxT(':'):
+			case '\"':
+			case '*':
+			case '<':
+			case '>':
+			case '?':
+			case '|':
+			case '\\':
+			case ':':
 				if (isFAT32) {
 					continue;
 				}
 
 			/* fall through */
 			default:
-				if ((c == wxT(' ')) && !keepSpaces) {
-					result += wxT("%20");
+				if ((c == ' ') && !keepSpaces) {
+					result += "%20";
 				} else if (c >= 32) {
 					// Many illegal for filenames in windows
 					// below the 32th char (which is space).
@@ -177,7 +177,7 @@ static wxString DoCleanPath(const wxString& path)
 
 	// Root paths must end with a separator (X:\ rather than X:).
 	// See comments in wxDirExists.
-	if ((cleanPath.Length() == 2) && (cleanPath.Last() == wxT(':'))) {
+	if ((cleanPath.Length() == 2) && (cleanPath.Last() == ':')) {
 		cleanPath += wxFileName::GetPathSeparator();
 	}
 
@@ -191,13 +191,38 @@ static wxString DoCleanPath(const wxString& path)
 /** Returns true if the two paths are equal. */
 static bool IsSameAs(const wxString& a, const wxString& b)
 {
-	// Cache the current directory
-	const wxString cwd = wxGetCwd();
+	// Fast path for bare filenames (no directory separator on either
+	// path).  Search results stream in as bare filenames from FT_FILENAME
+	// tags, and CSearchFile::AddChild's filename-dedup path
+	// (other->GetFileName() == file->GetFileName()) lands here on every
+	// duplicate result; without this fast path the call falls through to
+	// wxFileName::Normalize, which insists on a cwd argument and triggers
+	// wxGetCwd() — and wxGetCwd() emits a wxLogSysError on macOS bundles
+	// whose recorded CWD has been removed (App translocation, deleted
+	// launching shell, etc.) for every comparison.
+	if (a.find_first_of(wxFileName::GetPathSeparators()) == wxString::npos
+		&& b.find_first_of(wxFileName::GetPathSeparators()) == wxString::npos) {
+		return PATHCMP(a.c_str(), b.c_str()) == 0;
+	}
+
+	// Cache the current directory only when at least one of the paths
+	// is relative — wxFileName::Normalize ignores the cwd argument
+	// for absolute paths.  Skipping wxGetCwd() in the absolute-only
+	// case (which is essentially every aMule call site: shared dirs,
+	// Temp, Incoming, partfile paths) avoids the wxLogSysError
+	// "Failed to get the working directory" that wxGetCwd() emits on
+	// macOS bundles whose recorded CWD has been removed (App
+	// translocation, deleted launching shell, etc.).
+	wxString cwd;
+	if (!wxIsAbsolutePath(a) || !wxIsAbsolutePath(b)) {
+		cwd = wxGetCwd();
+	}
 
 	// We normalize everything, except env. variables, which
 	// can cause problems when the string is not encodable
 	// using wxConvLibc which wxWidgets uses for the purpose.
-	const int flags = (wxPATH_NORM_ALL | wxPATH_NORM_CASE) & ~wxPATH_NORM_ENV_VARS;
+	// wxPATH_NORM_ALL is deprecated in wx3 — use explicit flags instead (excluding wxPATH_NORM_ENV_VARS)
+	const int flags = wxPATH_NORM_DOTS | wxPATH_NORM_TILDE | wxPATH_NORM_CASE | wxPATH_NORM_ABSOLUTE | wxPATH_NORM_LONG | wxPATH_NORM_SHORTCUT;
 
 	// Let wxFileName handle the tricky stuff involved in actually
 	// comparing two paths ... Currently, a path ending with a path-
@@ -248,7 +273,7 @@ CPath::CPath(const wxString& filename)
 		m_printable = m_filesystem;
 #else
 		fn = filename.utf8_str();
-		m_filesystem = wxConvFile.cMB2WC(fn);
+		m_filesystem = wxConvFileName->cMB2WC(fn);
 
 		// There's no need to try to unmangle the filename here.
 		m_printable = DeepCopy(filename);
@@ -270,7 +295,7 @@ CPath::CPath(const CPath& other)
 CPath CPath::FromUniv(const wxString& path)
 {
 	wxCharBuffer fn = path.mb_str(wxConvISO8859_1);
-	return CPath(wxConvFile.cMB2WC(fn));
+	return CPath(wxConvFileName->cMB2WC(fn));
 }
 
 
@@ -279,7 +304,7 @@ wxString CPath::ToUniv(const CPath& path)
 	// The logic behind this is that by saving the filename
 	// as a raw bytestream, we can always recreate the on-disk filename,
 	// as if we had read it using wx functions.
-	wxCharBuffer fn = path.m_filesystem.mb_str(wxConvFile);
+	wxCharBuffer fn = path.m_filesystem.mb_str(*wxConvFileName);
 	return wxConvISO8859_1.cMB2WC(fn);
 }
 
@@ -484,12 +509,12 @@ CPath CPath::AppendExt(const wxString& ext) const
 	}
 
 	CPath result(*this);
-	if (ext[0] == wxT('.')) {
+	if (ext[0] == '.') {
 		result.m_printable << ext;
 		result.m_filesystem << ext;
 	} else {
-		result.m_printable << wxT(".") << ext;
-		result.m_filesystem << wxT(".") << ext;
+		result.m_printable << "." << ext;
+		result.m_filesystem << "." << ext;
 	}
 
 	return result;
@@ -508,14 +533,25 @@ CPath CPath::RemoveExt() const
 
 CPath CPath::RemoveAllExt() const
 {
+	// Loop until all extensions are removed.
+	//
+	// The termination test compares the underlying filesystem strings
+	// directly rather than going through CPath::operator!=. The latter
+	// routes through IsSameAs() / wxFileName::Normalize(), which
+	// resolves relative paths via wxGetCwd().  When the process's
+	// recorded working directory has been deleted (routine on macOS
+	// bundles whose launching shell's CWD has been removed) wxGetCwd()
+	// emits a wxLogSysError("Failed to get the working directory...")
+	// for every call, and CDownloadListCtrl::DrawFileItem reaches this
+	// loop on every paint of every download row.  Plain string
+	// equality is the right comparison here anyway: we only need to
+	// know whether RemoveExt() changed the buffer, not whether two
+	// filesystem locations refer to the same node.
 	CPath last, current = RemoveExt();
-
-	// Loop until all extensions are removed
 	do {
 		last = current;
-
 		current = last.RemoveExt();
-	} while (last != current);
+	} while (last.m_filesystem != current.m_filesystem);
 
 	return current;
 }
@@ -658,7 +694,7 @@ wxString CPath::TruncatePath(size_t length, bool isFilePath) const
 			int pathlen = (int)(length - file.Length() - 6);
 
 			if (pathlen > 0) {
-				path = wxT("[...]") + path.Right( pathlen );
+				path = "[...]" + path.Right( pathlen );
 			} else {
 				path.Clear();
 			}
@@ -669,7 +705,7 @@ wxString CPath::TruncatePath(size_t length, bool isFilePath) const
 
 	if (file.Length() > length) {
 		if (length > 5) {
-			file = file.Left(length - 5) + wxT("[...]");
+			file = file.Left(length - 5) + "[...]";
 		} else {
 			file.Clear();
 		}

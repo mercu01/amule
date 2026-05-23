@@ -77,7 +77,7 @@ typedef const wxWCharBuffer Char2UnicodeBuf;
 Unicode2CharBuf unicode2char(const wxChar* x);
 Unicode2CharBuf unicode2char(const Char2UnicodeBuf& x);
 inline Unicode2CharBuf unicode2char(const wxString& x)		{ return unicode2char(x.wc_str()); }
-inline Char2UnicodeBuf char2unicode(const char* x)	{ return wxConvLocal.cMB2WX(x); }
+inline Char2UnicodeBuf char2unicode(const char* x)	{ return wxConvLibc.cMB2WX(x); }
 
 inline Unicode2CharBuf unicode2UTF8(const wxChar* x)	{ return wxConvUTF8.cWX2MB(x); }
 inline Unicode2CharBuf unicode2UTF8(const Char2UnicodeBuf& x)	{ return wxConvUTF8.cWX2MB(x); }
@@ -87,23 +87,46 @@ inline Char2UnicodeBuf UTF82unicode(const char* x)	{ return wxConvUTF8.cMB2WX(x)
 inline const wxCharBuffer char2UTF8(const char *x)	{ return unicode2UTF8(char2unicode(x)); }
 inline const wxCharBuffer UTF82char(const char *x)	{ return unicode2char(UTF82unicode(x)); }
 
-inline Unicode2CharBuf filename2char(const wxChar* x)	{ return wxConvFile.cWC2MB(x); }
-inline Unicode2CharBuf filename2char(const wxString& x)	{ return x.mb_str(wxConvFile); }
-inline Char2UnicodeBuf char2filename(const char* x)	{ return wxConvFile.cMB2WC(x); }
+inline Unicode2CharBuf filename2char(const wxChar* x)	{ return wxConvFileName->cWC2MB(x); }
+inline Unicode2CharBuf filename2char(const wxString& x)	{ return x.mb_str(*wxConvFileName); }
+inline Char2UnicodeBuf char2filename(const char* x)	{ return wxConvFileName->cMB2WC(x); }
 
 
 //
 // Replaces "&" with "&&" in 'in' for use with text-labels
 //
 inline wxString MakeStringEscaped(wxString in) {
-	in.Replace(wxT("&"),wxT("&&"));
+	in.Replace("&","&&");
 	return in;
+}
+
+//
+// Render a string suitable for inclusion in a single log line.
+//
+// Control characters (< 0x20) and DEL (0x7f) become \xHH escapes so a
+// hostile or malformed input can't break log line framing or inject
+// fake log entries into a downstream collector. Printable ASCII and
+// any character >= 0x80 (UTF-8 continuation bytes / wide Unicode)
+// pass through untouched.
+//
+inline wxString EscapeForLog(const wxString& in) {
+	wxString out;
+	out.reserve(in.length());
+	for (size_t i = 0; i < in.length(); ++i) {
+		wxChar c = in[i];
+		if ((c >= 0 && c < 0x20) || c == 0x7f) {
+			out += wxString::Format("\\x%02x", static_cast<unsigned>(c));
+		} else {
+			out += c;
+		}
+	}
+	return out;
 }
 
 // Make a string be a folder
 inline wxString MakeFoldername(wxString path) {
 
-	if ( !path.IsEmpty() && ( path.Right(1) == wxT('/' )) ) {
+	if ( !path.IsEmpty() && ( path.Right(1) == '/') ) {
 		path.RemoveLast();
 	}
 

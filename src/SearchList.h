@@ -97,6 +97,16 @@ public:
 	/** Stops the current search (global or Kad), if any is in progress. */
 	void StopSearch(bool globalOnly = false);
 
+	/** True if the given searchID corresponds to an active Kad search. */
+	bool IsKadSearch(uint32_t searchID) const;
+
+	/**
+	 * Ask the Kad search identified by searchID to widen its frontier
+	 * via KADEMLIA_FIND_VALUE_MORE.  Wired to the search dialog "More"
+	 * button.  Returns true if a reask was dispatched, false otherwise.
+	 */
+	bool RequestMoreResults(uint32_t searchID);
+
 	/** Returns the completion percentage of the current search. */
 	uint32 GetSearchProgress() const;
 
@@ -109,10 +119,10 @@ public:
 	 *
 	 * If the search is not valid, an empty list is returned.
 	 */
-	const	CSearchResultList& GetSearchResults(long searchID) const;
+	const	CSearchResultList& GetSearchResults(wxUIntPtr searchID) const;
 
 	/** Removes all results for the specified search. */
-	void	RemoveResults(long searchID);
+	void	RemoveResults(wxUIntPtr searchID);
 
 
 	/** Finds the search-result (by hash) and downloads it in the given category. */
@@ -220,7 +230,7 @@ private:
 	CQueueObserver<CServer*> m_serverQueue;
 
 	//! Shorthand for the map of results (key is a SearchID).
-	typedef std::map<long, CSearchResultList> ResultMap;
+	typedef std::map<wxUIntPtr, CSearchResultList> ResultMap;
 
 	//! Map of all search-results added.
 	ResultMap	m_results;
@@ -230,7 +240,7 @@ private:
 	wxString	m_resultType;
 
 
-	DECLARE_EVENT_TABLE()
+	wxDECLARE_EVENT_TABLE();
 };
 
 

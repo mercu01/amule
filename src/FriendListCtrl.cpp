@@ -39,7 +39,7 @@
 #include "SafeFile.h"
 #include "FriendList.h"		// Needed for the friends list
 
-BEGIN_EVENT_TABLE(CFriendListCtrl, CMuleListCtrl)
+wxBEGIN_EVENT_TABLE(CFriendListCtrl, CMuleListCtrl)
 	EVT_RIGHT_DOWN(CFriendListCtrl::OnRightClick)
 	EVT_LIST_ITEM_ACTIVATED(ID_FRIENDLIST, CFriendListCtrl::OnItemActivated)
 
@@ -51,7 +51,7 @@ BEGIN_EVENT_TABLE(CFriendListCtrl, CMuleListCtrl)
 	EVT_MENU(MP_FRIENDSLOT, CFriendListCtrl::OnSetFriendslot)
 
 	EVT_CHAR(CFriendListCtrl::OnKeyPressed)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 
 CFriendListCtrl::CFriendListCtrl(wxWindow* parent, int id, const wxPoint& pos, wxSize siz, int flags)
@@ -88,12 +88,17 @@ void CFriendListCtrl::UpdateFriend(CFriend* toupdate)
 
 	sint32 itemnr = FindItem(-1, reinterpret_cast<wxUIntPtr>(toupdate));
 	if (itemnr == -1) {
-		itemnr = InsertItem(GetItemCount(), wxEmptyString);
+		itemnr = InsertItem(GetItemCount(), "");
 		SetItemPtrData(itemnr, reinterpret_cast<wxUIntPtr>(toupdate));
 	}
 
 	SetItem(itemnr, 0, toupdate->GetName());
-	SetItemTextColour(itemnr, toupdate->GetLinkedClient().IsLinked() ? *wxBLUE : *wxBLACK);
+	// Linked friends stay visually distinguished in blue; unlinked
+	// ones must follow the system text color so they don't render
+	// invisible on dark themes (#640).
+	SetItemTextColour(itemnr, toupdate->GetLinkedClient().IsLinked()
+		? *wxBLUE
+		: wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 }
 
 
@@ -171,7 +176,7 @@ void CFriendListCtrl::OnRemoveFriend(wxCommandEvent& WXUNUSED(event))
 		question = _("Are you sure that you wish to delete the selected friends?");
 	}
 
-	if ( wxMessageBox( question, _("Cancel"), wxICON_QUESTION | wxYES_NO, this) == wxYES ) {
+	if ( wxMessageBox( question, _("Cancel"), wxICON_QUESTION | wxYES_NO | wxNO_DEFAULT, this) == wxYES ) {
 		long index = GetNextItem( -1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED );
 
 		while( index != -1 ) {

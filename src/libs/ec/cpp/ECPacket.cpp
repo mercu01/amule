@@ -54,13 +54,17 @@ void CECPacket::DebugPrint(bool incoming, uint32 trueSize) const
 	wxString GetDebugNameECOpCodes(uint8 arg);
 
 	if (ECLogIsEnabled()) {
-		uint32 size = GetPacketLength() + sizeof(ec_opcode_t) + 2;	// full length incl. header
+		// full length incl. header: opcode + own children-count field
+		// (uint16, plus a uint32 follow-up if the count was extended
+		// past the 0xFFFF ceiling — see CECTag::WriteChildren).
+		uint32 size = GetPacketLength() + sizeof(ec_opcode_t) + sizeof(uint16)
+			+ (GetTagCount() >= 0xFFFF ? sizeof(uint32) : 0);
 
 		if (trueSize == 0 || size == trueSize) {
-			DoECLogLine(CFormat(wxT("%s %s %d")) % (incoming ? wxT("<") : wxT(">"))
+			DoECLogLine(CFormat("%s %s %d") % (incoming ? "<" : ">")
 				% GetDebugNameECOpCodes(m_opCode) % size);
 		} else {
-			DoECLogLine(CFormat(wxT("%s %s %d (compressed: %d)")) % (incoming ? wxT("<") : wxT(">"))
+			DoECLogLine(CFormat("%s %s %d (compressed: %d)") % (incoming ? "<" : ">")
 				% GetDebugNameECOpCodes(m_opCode) % size % trueSize);
 		}
 		CECTag::DebugPrint(1, false);

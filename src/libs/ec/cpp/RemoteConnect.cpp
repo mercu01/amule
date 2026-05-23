@@ -32,8 +32,7 @@
 
 #include <wx/intl.h>
 
-DEFINE_LOCAL_EVENT_TYPE(wxEVT_EC_CONNECTION)
-
+wxDEFINE_EVENT(wxEVT_EC_CONNECTION, wxEvent);
 CECLoginPacket::CECLoginPacket(const wxString& client, const wxString& version,
 							   bool canZLIB, bool canUTF8numbers, bool canNotify)
 :
@@ -45,7 +44,7 @@ CECPacket(EC_OP_AUTH_REQ)
 
 	#ifdef EC_VERSION_ID
 	CMD4Hash versionhash;
-	wxCHECK2(versionhash.Decode(wxT(EC_VERSION_ID)), /* Do nothing. */);
+	wxCHECK2(versionhash.Decode(EC_VERSION_ID), /* Do nothing. */);
 	AddTag(CECTag(EC_TAG_VERSION_ID, versionhash));
 	#endif
 
@@ -56,6 +55,10 @@ CECPacket(EC_OP_AUTH_REQ)
 	if (canUTF8numbers) AddTag(CECEmptyTag(EC_TAG_CAN_UTF8_NUMBERS));
 	// client accepts push messages
 	if (canNotify)		AddTag(CECEmptyTag(EC_TAG_CAN_NOTIFY));
+	// client can decode the sentinel-extended children-count wire format
+	// from CECTag::WriteChildren (#199). Always advertised by new
+	// clients; old servers ignore the unknown tag.
+	AddTag(CECEmptyTag(EC_TAG_CAN_LARGE_TAG_COUNT));
 }
 
 CECAuthPacket::CECAuthPacket(const wxString& pass)
@@ -114,7 +117,7 @@ bool CRemoteConnect::ConnectToCore(const wxString &host, int port,
 	m_version = version;
 
 	// don't even try to connect without a valid password
-	if (m_connectionPassword.IsEmpty() || m_connectionPassword == wxT("d41d8cd98f00b204e9800998ecf8427e")) {
+	if (m_connectionPassword.IsEmpty() || m_connectionPassword == "d41d8cd98f00b204e9800998ecf8427e") {
 		m_server_reply = _("You must specify a non-empty password.");
 		return false;
 	} else {
@@ -249,7 +252,7 @@ bool CRemoteConnect::ProcessAuthPacket(const CECPacket *reply) {
 		if ((m_ec_state == EC_REQ_SENT) && (reply->GetOpCode() == EC_OP_AUTH_SALT)) {
 				const CECTag *passwordSalt = reply->GetTagByName(EC_TAG_PASSWD_SALT);
 				if ( NULL != passwordSalt) {
-					wxString saltHash = MD5Sum(CFormat(wxT("%lX")) % passwordSalt->GetInt()).GetHash();
+					wxString saltHash = MD5Sum(CFormat("%lX") % passwordSalt->GetInt()).GetHash();
 					m_connectionPassword = MD5Sum(m_connectionPassword.Lower() + saltHash).GetHash();
 					m_ec_state = EC_SALT_RECEIVED;
 					return true;
@@ -266,6 +269,16 @@ bool CRemoteConnect::ProcessAuthPacket(const CECPacket *reply) {
 					reply->GetTagByName(EC_TAG_SERVER_VERSION)->GetStringData();
 			} else {
 				m_server_reply = _("Succeeded! Connection established.");
+			}
+			// Mirror server's negotiated capabilities into m_my_flags so
+			// outgoing per-packet flags include them (auto-stripped by
+			// `flags &= m_my_flags` in CECSocket::WritePacket otherwise).
+			// EC_TAG_CAN_LARGE_TAG_COUNT only appears in AUTH_OK from
+			// new daemons (#199); old daemons just don't echo the tag,
+			// and the sentinel wire format stays disabled in both
+			// directions for the duration of this connection.
+			if (reply->GetTagByName(EC_TAG_CAN_LARGE_TAG_COUNT)) {
+				m_my_flags |= EC_FLAG_LARGE_TAG_COUNT;
 			}
 		}else {
 			m_ec_state = EC_FAIL;

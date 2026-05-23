@@ -35,6 +35,10 @@
 #include "Friend.h"
 #include "Logger.h"
 
+#ifdef __WXMAC__
+#include "MacAppHelper.h"	// mac_set_accessory_mode
+#endif
+
 #ifndef AMULE_DAEMON
 #	include "ChatWnd.h"
 #	include "amuleDlg.h"
@@ -63,8 +67,7 @@
 
 #include <common/MacrosProgramSpecific.h>
 
-DEFINE_LOCAL_EVENT_TYPE(MULE_EVT_NOTIFY)
-
+wxDEFINE_EVENT(MULE_EVT_NOTIFY, wxEvent);
 
 namespace MuleNotify
 {
@@ -81,7 +84,7 @@ namespace MuleNotify
 #endif
 		} else {
 			CMuleGUIEvent evt(ntf.Clone());
-			wxPostEvent(wxTheApp, evt);
+			wxQueueEvent(wxTheApp, (evt).Clone());
 		}
 	}
 
@@ -89,7 +92,7 @@ namespace MuleNotify
 	void HandleNotificationAlways(const CMuleNotiferBase& ntf)
 	{
 		CMuleGUIEvent evt(ntf.Clone());
-		wxPostEvent(wxTheApp, evt);
+		wxQueueEvent(wxTheApp, (evt).Clone());
 	}
 
 
@@ -128,7 +131,16 @@ namespace MuleNotify
 	void DownloadCtrlUpdateItem(const void* item)
 	{
 #ifndef CLIENT_GUI
-		theApp->ECServerHandler->m_ec_notifier->DownloadFile_SetDirty(static_cast<const CPartFile*>(item));
+		// Notify can fire from PartFile load during early OnInit (#268
+		// crash from a wx2.8.12 / pre-ASIO build) and from background
+		// threads during shutdown after `delete ECServerHandler`.
+		// Master's OnInit currently builds ECServerHandler before
+		// LoadMetFiles, so the early-init crash is fixed by ordering;
+		// guard the dereference anyway so future reorders or
+		// shutdown races can't reintroduce the segfault.
+		if (theApp->ECServerHandler && theApp->ECServerHandler->m_ec_notifier) {
+			theApp->ECServerHandler->m_ec_notifier->DownloadFile_SetDirty(static_cast<const CPartFile*>(item));
+		}
 #endif
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_transferwnd && theApp->amuledlg->m_transferwnd->downloadlistctrl) {
@@ -165,7 +177,23 @@ namespace MuleNotify
 	void ShowGUI()
 	{
 #ifndef AMULE_DAEMON
+		// Triggered from a duplicate-launch RAISE_DIALOG signal (the
+		// running instance picks it up via ED2KLinks polling) and
+		// from MacReopenApp when the user clicks the Dock icon. Cover
+		// every hidden state the main window can be in:
+		//   * Show(false) via the close-button HideOnClose path
+		//   * Iconize(true) via the minimize-to-tray path
+		//   * just behind another app's window
+#ifdef __WXMAC__
+		// If we're still in accessory mode (window was hidden via the
+		// tray), restore the regular Dock icon before the window
+		// comes back, otherwise activate-ignoring-other-apps lands on
+		// a Dock-less app and the focus shift is invisible.
+		mac_set_accessory_mode(false);
+#endif
+		theApp->amuledlg->Show(true);
 		theApp->amuledlg->Iconize(false);
+		theApp->amuledlg->Raise();
 #endif
 	}
 
@@ -380,9 +408,33 @@ namespace MuleNotify
 	}
 
 
+	void SharedFilesBeginBulkUpdate()
+	{
+#ifndef AMULE_DAEMON
+		if (theApp->amuledlg && theApp->amuledlg->m_sharedfileswnd && theApp->amuledlg->m_sharedfileswnd->sharedfilesctrl) {
+			theApp->amuledlg->m_sharedfileswnd->sharedfilesctrl->BeginBulkUpdate();
+		}
+#endif
+	}
+
+
+	void SharedFilesEndBulkUpdate()
+	{
+#ifndef AMULE_DAEMON
+		if (theApp->amuledlg && theApp->amuledlg->m_sharedfileswnd && theApp->amuledlg->m_sharedfileswnd->sharedfilesctrl) {
+			theApp->amuledlg->m_sharedfileswnd->sharedfilesctrl->EndBulkUpdate();
+		}
+#endif
+	}
+
+
 	void DownloadCtrlAddFile(CPartFile* file)
 	{
-		theApp->ECServerHandler->m_ec_notifier->DownloadFile_AddFile(file);
+		// See DownloadCtrlUpdateItem above for the rationale; the
+		// notifier can be NULL during init or shutdown.
+		if (theApp->ECServerHandler && theApp->ECServerHandler->m_ec_notifier) {
+			theApp->ECServerHandler->m_ec_notifier->DownloadFile_AddFile(file);
+		}
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_transferwnd && theApp->amuledlg->m_transferwnd->downloadlistctrl ) {
 			theApp->amuledlg->m_transferwnd->downloadlistctrl->AddFile(file);
@@ -392,7 +444,9 @@ namespace MuleNotify
 
 	void DownloadCtrlRemoveFile(CPartFile* file)
 	{
-		theApp->ECServerHandler->m_ec_notifier->DownloadFile_RemoveFile(file);
+		if (theApp->ECServerHandler && theApp->ECServerHandler->m_ec_notifier) {
+			theApp->ECServerHandler->m_ec_notifier->DownloadFile_RemoveFile(file);
+		}
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_transferwnd && theApp->amuledlg->m_transferwnd->downloadlistctrl) {
 			theApp->amuledlg->m_transferwnd->downloadlistctrl->RemoveFile(file);
@@ -560,7 +614,7 @@ namespace MuleNotify
 	{
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_chatwnd) {
-			theApp->amuledlg->m_chatwnd->SendMessage(captcha, wxEmptyString, to_id);
+			theApp->amuledlg->m_chatwnd->SendMessage(captcha, "", to_id);
 		}
 #endif
 	}
