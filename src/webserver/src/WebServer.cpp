@@ -30,6 +30,7 @@
 #include <string>	// Do_not_auto_remove (g++-4.0.1)
 
 #include <wx/datetime.h>
+#include <wx/stopwatch.h>	// Needed for request timing
 
 //-------------------------------------------------------------------
 
@@ -1865,6 +1866,9 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 
 	Print(_("Processing request [original]: ") + filename + "\n");
 
+	wxStopWatch requestTimer;
+	webInterface->m_activeRequests++;
+
 	if ( filename.Length() == 0 ) {
 		filename = m_index;
 	}
@@ -1975,6 +1979,13 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 		Data.pSocket->SendHttpHeaders(session->m_vars["content_type"].c_str(), isUseGzip, httpOutLen, Data.SessionID);
 		Data.pSocket->SendData(httpOut, httpOutLen);
 		delete [] httpOut;
+	}
+
+	webInterface->m_activeRequests--;
+	long elapsed = requestTimer.Time();
+	if (elapsed > 3000) {
+		Print(CFormat("WARNING [webserver]: Request '%s' took %ld ms to process\n")
+			% filename % elapsed);
 	}
 }
 

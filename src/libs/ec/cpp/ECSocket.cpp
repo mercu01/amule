@@ -205,7 +205,8 @@ size_t CQueuedData::ReadFromSocketAll(CECSocket *sock, size_t len)
 	do {
 		// Give socket a 10 sec chance to recv more data.
 		if ( !sock->WaitSocketRead(10, 0) ) {
-			AddDebugLogLineN(logEC, "ReadFromSocketAll: socket is blocking");
+			AddDebugLogLineN(logEC, CFormat("ReadFromSocketAll: timeout waiting for data (remaining=%u of %u bytes)")
+				% (unsigned)read_rem % (unsigned)len);
 			break;
 		}
 
@@ -215,7 +216,8 @@ size_t CQueuedData::ReadFromSocketAll(CECSocket *sock, size_t len)
 		read_rem -= read;
 
 		if (sock->SocketRealError()) {
-			AddDebugLogLineN(logEC, "ReadFromSocketAll: socket error");
+			AddDebugLogLineN(logEC, CFormat("ReadFromSocketAll: socket error (remaining=%u of %u bytes)")
+				% (unsigned)read_rem % (unsigned)len);
 			break;
 		}
 	} while (read_rem);
@@ -306,13 +308,15 @@ const CECPacket *CECSocket::SendRecvPacket(const CECPacket *packet)
 		|| SocketError()		// This is a synchronous read, so WouldBlock is an error too.
 		|| !ReadHeader()) {
 		OnError();
-		AddDebugLogLineN(logEC, "SendRecvPacket: error");
+		AddDebugLogLineN(logEC, CFormat("SendRecvPacket: error reading header (opcode=0x%x, connected=%d)")
+			% packet->GetOpCode() % IsSocketConnected());
 		return 0;
 	}
 	if (m_curr_rx_data->ReadFromSocketAll(this, m_curr_packet_len) != m_curr_packet_len
 		|| SocketError()) {
 		OnError();
-		AddDebugLogLineN(logEC, "SendRecvPacket: error");
+		AddDebugLogLineN(logEC, CFormat("SendRecvPacket: error reading payload (opcode=0x%x, expected_len=%u)")
+			% packet->GetOpCode() % m_curr_packet_len);
 		return 0;
 	}
 	const CECPacket *reply = ReadPacket();

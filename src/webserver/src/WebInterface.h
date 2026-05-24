@@ -29,6 +29,8 @@
 
 #include "ExternalConnector.h"
 
+#include <wx/timer.h>
+
 
 namespace MuleNotify {
 	class CMuleGUIEvent;
@@ -79,6 +81,7 @@ public:
 	virtual wxString SetLocale(const wxString& language);
 
 	void OnNotifyEvent(CMuleGUIEvent& evt);
+	void OnWatchdogTimer(wxTimerEvent& evt);
 	wxDECLARE_EVENT_TABLE();
 
 private:
@@ -86,6 +89,9 @@ private:
 	virtual int	OnRun();
 
 	bool	m_localTemplate;
+	wxTimer	m_watchdogTimer;
+	long	m_lastWatchdogTick;
+	int	m_activeRequests;
 };
 
 #endif // WEBINTERFACE_H

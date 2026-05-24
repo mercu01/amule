@@ -53,6 +53,7 @@ CWebSocket::CWebSocket(CWebServerBase *parent)
 
 void CWebSocket::OnLost()
 {
+	m_pParent->Print("WebSocket: connection lost by peer\n");
 	Close();
 	Destroy();
 }

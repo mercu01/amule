@@ -38,6 +38,7 @@
 
 #include <ec/cpp/ECFileConfig.h>	// Needed for CECFileConfig
 #include <common/MD5Sum.h>
+#include <common/Format.h>		// Needed for CFormat
 
 
 #include "WebServer.h"
@@ -57,9 +58,12 @@
 IMPLEMENT_APP(CamulewebApp)
 //-------------------------------------------------------------------
 
+static const int ID_WATCHDOG_TIMER = wxNewId();
+
 wxDEFINE_EVENT(MULE_EVT_NOTIFY, wxEvent);
 wxBEGIN_EVENT_TABLE(CamulewebApp, CaMuleExternalConnector)
 	EVT_MULE_NOTIFY(CamulewebApp::OnNotifyEvent)
+	EVT_TIMER(ID_WATCHDOG_TIMER, CamulewebApp::OnWatchdogTimer)
 wxEND_EVENT_TABLE()
 
 
@@ -67,6 +71,20 @@ wxEND_EVENT_TABLE()
 void CamulewebApp::OnNotifyEvent(CMuleGUIEvent& evt)
 {
 	evt.Notify();
+}
+
+void CamulewebApp::OnWatchdogTimer(wxTimerEvent&)
+{
+	long now = wxGetLocalTime();
+	long delta = now - m_lastWatchdogTick;
+	m_lastWatchdogTick = now;
+
+	// If more than 30 seconds passed since last tick, the event loop was blocked
+	if (delta > 30) {
+		Show(CFormat("WARNING [watchdog]: Event loop was blocked for %ld seconds! "
+			"(active_requests=%d) Web UI may have been unresponsive.\n")
+			% delta % m_activeRequests);
+	}
 }
 
 namespace MuleNotify
@@ -92,6 +110,7 @@ namespace MuleNotify
 
 void CamulewebApp::Post_Shell()
 {
+	m_watchdogTimer.Stop();
 	m_webserver->StopServer();
 	delete m_webserver;
 	m_webserver = 0;
@@ -405,6 +424,13 @@ void CamulewebApp::Pre_Shell()
 		m_webserver = new CNoTemplateWebServer(this);
 	}
 	m_webserver->StartServer();
+
+	// Start the watchdog timer — fires every 10 seconds to detect event loop stalls
+	m_activeRequests = 0;
+	m_lastWatchdogTick = wxGetLocalTime();
+	m_watchdogTimer.SetOwner(this, ID_WATCHDOG_TIMER);
+	m_watchdogTimer.Start(10000);
+	Show("Watchdog timer started (interval=10s, stall threshold=30s)\n");
 }
 
 

@@ -27,6 +27,7 @@
 #include <clocale>		// For setlocale()
 #include <common/Format.h>	// Needed for CFormat
 #include <wx/tokenzr.h>		// For wxStringTokenizer
+#include <wx/stopwatch.h>	// For wxStopWatch
 
 // For readline
 #ifdef HAVE_LIBREADLINE
@@ -297,6 +298,35 @@ void CaMuleExternalConnector::Show(const wxString &s)
 		fflush(stdout);
 #endif
 	}
+}
+
+const CECPacket *CaMuleExternalConnector::SendRecvMsg_v2(const CECPacket *request)
+{
+	if (!m_ECClient) {
+		Show("ERROR [EC]: SendRecvMsg_v2 called but EC client is NULL\n");
+		return nullptr;
+	}
+	if (!m_ECClient->IsSocketConnected()) {
+		Show("ERROR [EC]: SendRecvMsg_v2 called but socket is not connected\n");
+		return nullptr;
+	}
+
+	wxStopWatch sw;
+	const CECPacket *reply = m_ECClient->SendRecvPacket(request);
+	long elapsed = sw.Time();
+
+	if (!reply) {
+		Show(CFormat("ERROR [EC]: SendRecvMsg_v2 got NULL reply after %ld ms (opcode=0x%x). "
+			"Connection to amuled may be lost.\n") % elapsed % request->GetOpCode());
+		if (!m_ECClient->IsSocketConnected()) {
+			Show("ERROR [EC]: Socket disconnected after failed SendRecvPacket\n");
+		}
+	} else if (elapsed > 5000) {
+		Show(CFormat("WARNING [EC]: SendRecvMsg_v2 took %ld ms (opcode=0x%x, reply=0x%x)\n")
+			% elapsed % request->GetOpCode() % reply->GetOpCode());
+	}
+
+	return reply;
 }
 
 void CaMuleExternalConnector::ShowGreet()
