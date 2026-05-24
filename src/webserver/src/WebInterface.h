@@ -91,6 +91,8 @@ private:
 	bool	m_localTemplate;
 	wxTimer	m_watchdogTimer;
 	long	m_lastWatchdogTick;
+
+	friend class CScriptWebServer;
 	int	m_activeRequests;
 };
 

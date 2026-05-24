@@ -303,12 +303,9 @@ void CUploadQueue::Process()
 
 uint32 CUploadQueue::GetMaxSlots() const
 {
-uint32 CUploadQueue::GetMaxSlots() const
-{
 	uint32 nMaxSlots = thePrefs::GetSlotAllocation();
 	if (thePrefs::useAlternativeRanges()) {
 		nMaxSlots = thePrefs::GetSlotAllocationAltRate();
-	}
 	}
 	if (nMaxSlots < 5) {
 		nMaxSlots = 5;

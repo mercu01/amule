@@ -343,8 +343,6 @@ void* UploadBandwidthThrottler::Entry()
 		} else {
 			allowedDataRate = maxUpload * 1024;
 		}
-		}
-	
 
 		uint32 minFragSize = 1300;
 		uint32 doubleSendSize = minFragSize*2; // send two packages at a time so they can share an ACK
